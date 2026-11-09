@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": null,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["node", "vitest/globals", "@vitest/eslint-plugin"]
+  },
+  "include": ["src", "tests"]
+}
