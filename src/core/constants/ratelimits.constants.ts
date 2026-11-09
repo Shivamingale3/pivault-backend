@@ -17,6 +17,12 @@ export const RATE_LIMITS = {
     windowMs: ONE_MINUTE_MS,
     maxRequests: 60,
   },
+
+  USER_WRITE: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 30,
+    message: 'Too many user write requests. Please try again later.',
+  },
 } as const satisfies Record<string, RateLimitConfig>;
 
 export type RateLimitKey = keyof typeof RATE_LIMITS;

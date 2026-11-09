@@ -10,9 +10,12 @@ import { ErrorHandler } from './core/middlewares/ErrorHandler.js';
 import { AppErrorMapper } from './core/middlewares/errorMappers/AppErrorMapper.js';
 import { BodyParserErrorMapper } from './core/middlewares/errorMappers/BodyParserErrorMapper.js';
 import { ZodErrorMapper } from './core/middlewares/errorMappers/ZodErrorMapper.js';
+import { PrismaErrorMapper } from './core/middlewares/errorMappers/PrismaErrorMapper.js';
 import { NotFoundHandler } from './core/middlewares/NotFoundHandler.js';
 import { RateLimiterFactory } from './core/middlewares/RateLimiterFactory.js';
+import { RequestValidator } from './core/middlewares/RequestValidator.js';
 import { createHealthModule } from './modules/health/health.module.js';
+import { createUserModule } from './modules/user/user.module.js';
 
 export interface ContainerOverrides {
   config?: AppConfig;
@@ -47,16 +50,23 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
 
   const errorHandler = new ErrorHandler(logger, [
     new AppErrorMapper(),
+    new PrismaErrorMapper(),
     new ZodErrorMapper(),
     new BodyParserErrorMapper(),
   ]);
 
+  const rateLimiterFactory = new RateLimiterFactory(logger, RATE_LIMITS);
+  const validator = new RequestValidator();
+
   // Feature modules — register new ones here.
-  const modules = [createHealthModule()];
+  const modules = [
+    createHealthModule(),
+    createUserModule({ database, validator, rateLimiterFactory }),
+  ];
 
   const app = new App({
     logger,
-    rateLimiterFactory: new RateLimiterFactory(logger, RATE_LIMITS),
+    rateLimiterFactory,
     errorHandler,
     notFoundHandler: new NotFoundHandler(),
     modules,

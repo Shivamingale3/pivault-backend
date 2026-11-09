@@ -4,3 +4,5 @@ coverage
 generated
 prisma/migrations
 *.log
+# Installed agent skills (third-party docs)
+.agents
