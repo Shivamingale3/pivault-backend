@@ -10,7 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.resolve(__dirname, '.env') });
 
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
+  // A folder: every *.prisma file inside is merged (multi-file schema).
+  schema: 'prisma/schema',
   migrations: {
     path: 'prisma/migrations',
   },
