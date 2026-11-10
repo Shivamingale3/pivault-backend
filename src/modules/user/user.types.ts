@@ -9,6 +9,9 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
+  /** Calling-code digits without "+", e.g. "91". */
+  countryCode: string;
+  /** National number, digits only, e.g. "9876543210". */
   mobile: string;
   passwordChangedAt: Date | null;
   recoveryKeyConfiguredAt: Date | null;
@@ -26,7 +29,9 @@ export interface CreateUserData {
   lastName: string;
   /** Already normalised (trimmed, lower-cased). */
   email: string;
-  /** Already normalised to E.164. */
+  /** Already normalised: calling-code digits without "+". */
+  countryCode: string;
+  /** Already normalised: national number, digits only. */
   mobile: string;
   passwordHash: string;
 }

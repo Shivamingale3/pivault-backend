@@ -51,7 +51,7 @@ const waitFor = async (check: () => Promise<boolean>, timeoutMs = 5000) => {
 
 beforeAll(async () => {
   await redis.connect();
-  await flushTestRedis(redis);
+  await flushTestRedis();
   await producer.connect();
   await workers.connect();
 });

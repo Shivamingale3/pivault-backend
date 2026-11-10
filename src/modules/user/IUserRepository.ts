@@ -5,7 +5,7 @@ import type { CreateUserData, User, UserWithPasswordHash } from './user.types.js
  * this interface only, so it can run against Prisma or an in-memory fake.
  *
  * Implementations MUST:
- * - throw `UserConflictError` naming the field when email or mobile is taken;
+ * - throw `UserConflictError` naming the field when the email or the (countryCode, mobile) pair is taken;
  * - return `null` / `false` (not throw) when the target row does not exist;
  * - never include `passwordHash` except from `findAuthByEmail`.
  */

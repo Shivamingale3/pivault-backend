@@ -6,6 +6,7 @@ import { RedisCache } from './core/cache/RedisCache.js';
 import { RedisConnection } from './core/cache/RedisConnection.js';
 import { AppConfig } from './core/config/AppConfig.js';
 import { RATE_LIMITS } from './core/constants/ratelimits.constants.js';
+import { Argon2PasswordHasher } from './core/crypto/Argon2PasswordHasher.js';
 import { PrismaDatabase } from './core/database/PrismaDatabase.js';
 import { ResourceGroup } from './core/lifecycle/ResourceGroup.js';
 import type { ILogger } from './core/logger/ILogger.js';
@@ -15,12 +16,18 @@ import { AppErrorMapper } from './core/middlewares/errorMappers/AppErrorMapper.j
 import { BodyParserErrorMapper } from './core/middlewares/errorMappers/BodyParserErrorMapper.js';
 import { ZodErrorMapper } from './core/middlewares/errorMappers/ZodErrorMapper.js';
 import { PrismaErrorMapper } from './core/middlewares/errorMappers/PrismaErrorMapper.js';
+import { LocalOnlyGuard } from './core/middlewares/LocalOnlyGuard.js';
 import { NotFoundHandler } from './core/middlewares/NotFoundHandler.js';
 import { RateLimiterFactory } from './core/middlewares/RateLimiterFactory.js';
+import { RequestValidator } from './core/middlewares/RequestValidator.js';
 import { BullMqJobQueue } from './core/queue/BullMqJobQueue.js';
 import { QueueName } from './core/queue/queue.constants.js';
 import type { IJobQueue } from './core/queue/queue.types.js';
 import { createHealthModule } from './modules/health/health.module.js';
+import { createRegisterModule } from './modules/register/register.module.js';
+import { RegisterService } from './modules/register/RegisterService.js';
+import { PrismaUserRepository } from './modules/user/PrismaUserRepository.js';
+import { UserService } from './modules/user/UserService.js';
 import { EMAIL_JOB_SCHEMAS, type EmailJobSchemas } from './modules/email/email.jobs.js';
 
 export interface ContainerOverrides {
@@ -60,7 +67,11 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   const database = overrides.database ?? new PrismaDatabase(config.databaseUrl);
   const redis =
     overrides.redis ??
-    new RedisConnection({ url: config.redisUrl, keyPrefix: config.redisKeyPrefix });
+    new RedisConnection({
+      cacheUrl: config.redisCacheUrl,
+      queueUrl: config.redisQueueUrl,
+      keyPrefix: config.redisKeyPrefix,
+    });
   const cache = new RedisCache(redis.cache, logger);
 
   // Producer only; the worker process (src/worker.ts) consumes.
@@ -84,7 +95,21 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   const rateLimiterFactory = new RateLimiterFactory(logger, RATE_LIMITS);
 
   // Feature modules — register new ones here.
-  const modules = [createHealthModule(() => resources.pingAll())];
+  const userService = new UserService(new PrismaUserRepository(database.client));
+  const registerService = new RegisterService(
+    userService,
+    new Argon2PasswordHasher(),
+    emailQueue,
+    logger,
+  );
+  const modules = [
+    createHealthModule(() => resources.pingAll()),
+    createRegisterModule(registerService, {
+      localOnly: new LocalOnlyGuard(logger).handle,
+      rateLimiter: rateLimiterFactory.create('REGISTER'),
+      validator: new RequestValidator(),
+    }),
+  ];
 
   const app = new App({
     logger,

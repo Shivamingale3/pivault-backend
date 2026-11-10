@@ -20,14 +20,16 @@ export class AppConfig {
   readonly port: number;
   readonly environment: AppEnvironment;
   readonly databaseUrl: string;
-  readonly redisUrl: string;
+  readonly redisCacheUrl: string;
+  readonly redisQueueUrl: string;
   readonly redisKeyPrefix: string;
 
   private constructor(values: Env) {
     this.port = values.APP_PORT;
     this.environment = values.APP_ENV;
     this.databaseUrl = values.DATABASE_URL;
-    this.redisUrl = values.REDIS_URL;
+    this.redisCacheUrl = values.REDIS_CACHE_URL;
+    this.redisQueueUrl = values.REDIS_QUEUE_URL;
     this.redisKeyPrefix = values.REDIS_KEY_PREFIX;
     Object.freeze(this);
   }

@@ -17,6 +17,11 @@ export const RATE_LIMITS = {
     windowMs: ONE_MINUTE_MS,
     maxRequests: 60,
   },
+  /** Local-only register endpoint: argon2 hashing is deliberately expensive. */
+  REGISTER: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 5,
+  },
 } as const satisfies Record<string, RateLimitConfig>;
 
 export type RateLimitKey = keyof typeof RATE_LIMITS;

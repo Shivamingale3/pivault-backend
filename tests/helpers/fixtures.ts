@@ -8,7 +8,8 @@ export function userData(overrides: Partial<CreateUserData> = {}): CreateUserDat
     firstName: 'Jane',
     lastName: 'Doe',
     email: `jane.${suffix}@example.com`,
-    mobile: `+9198${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`,
+    countryCode: '91',
+    mobile: `98${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`,
     passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$placeholder',
     ...overrides,
   };

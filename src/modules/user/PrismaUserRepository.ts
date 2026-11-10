@@ -10,6 +10,7 @@ const USER_SELECT = {
   firstName: true,
   lastName: true,
   email: true,
+  countryCode: true,
   mobile: true,
   passwordChangedAt: true,
   recoveryKeyConfiguredAt: true,

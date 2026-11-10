@@ -31,6 +31,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "~7.8.0",
     "@prisma/client": "^7.8.0",
+    "argon2": "^0.45.2",
     "bullmq": "^6.4.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -38,6 +39,7 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "ioredis": "^6.0.0",
+    "libphonenumber-js": "^1.13.16",
     "morgan": "^1.11.0",
     "pg": "^8.23.1",
     "ulid": "^3.0.2",

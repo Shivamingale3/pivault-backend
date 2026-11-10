@@ -4,7 +4,10 @@ import type { IManagedResource } from '../lifecycle/IManagedResource.js';
 const PING_TIMEOUT_MS = 1000;
 
 export interface RedisConnectionOptions {
-  url: string;
+  /** Redis instance backing the cache. */
+  cacheUrl: string;
+  /** Redis instance backing BullMQ; may be the same server as the cache. */
+  queueUrl: string;
   /** App namespace, e.g. `pivault`. */
   keyPrefix: string;
 }
@@ -12,7 +15,8 @@ export interface RedisConnectionOptions {
 /**
  * Owns every ioredis client the process opens, so one `disconnect()` closes them all.
  * - `cache`: fail-fast client for the cache (no offline queue, few retries).
- * - `createBullConnection()`: clients for BullMQ, which requires `maxRetriesPerRequest: null`.
+ * - `createBullConnection()`: clients for BullMQ (against `queueUrl`), which requires
+ *   `maxRetriesPerRequest: null`. The cache and queue may live on separate Redis servers.
  */
 export class RedisConnection implements IManagedResource {
   readonly name = 'redis';
@@ -23,7 +27,7 @@ export class RedisConnection implements IManagedResource {
 
   constructor(private readonly options: RedisConnectionOptions) {
     this.queuePrefix = `${options.keyPrefix}:bull`;
-    this.cache = new Redis(options.url, {
+    this.cache = new Redis(options.cacheUrl, {
       lazyConnect: true,
       enableOfflineQueue: false,
       maxRetriesPerRequest: 2,
@@ -32,7 +36,7 @@ export class RedisConnection implements IManagedResource {
   }
 
   createBullConnection(): Redis {
-    const client = new Redis(this.options.url, {
+    const client = new Redis(this.options.queueUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
     });

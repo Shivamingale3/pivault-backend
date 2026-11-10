@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { RedisCache } from '../../src/core/cache/RedisCache.js';
 import { NoopLogger } from '../../src/core/logger/NoopLogger.js';
-import { createTestRedis, flushTestRedis } from '../helpers/redis.js';
+import { createRawCacheClient, createTestRedis, flushTestRedis } from '../helpers/redis.js';
 
 const redis = createTestRedis();
 const cache = new RedisCache(redis.cache, new NoopLogger());
 
 beforeAll(() => redis.connect());
-beforeEach(() => flushTestRedis(redis));
+beforeEach(() => flushTestRedis());
 afterAll(() => redis.disconnect());
 
 describe('RedisCache (real Redis)', () => {
@@ -21,8 +21,12 @@ describe('RedisCache (real Redis)', () => {
 
   it('namespaces keys under <prefix>:cache:', async () => {
     await cache.set('k', 1, 60);
-    const raw = redis.createBullConnection();
-    expect(await raw.exists('pivault-test:cache:k')).toBe(1);
+    const raw = createRawCacheClient();
+    try {
+      expect(await raw.exists('pivault-test:cache:k')).toBe(1);
+    } finally {
+      raw.disconnect();
+    }
   });
 
   it('deletes keys', async () => {

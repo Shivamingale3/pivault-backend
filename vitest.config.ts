@@ -16,7 +16,7 @@ process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/app_test';
 process.env.APP_ENV = 'test';
 process.env.APP_PORT = '0';
-// Isolates test keys; REDIS_URL itself is provided by tests/global-setup.ts.
+// Tests share the .env Redis servers; this prefix isolates (and lets tests safely clean) their keys.
 process.env.REDIS_KEY_PREFIX = 'pivault-test';
 
 export default defineConfig({
@@ -25,7 +25,6 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     globalSetup: ['tests/global-setup.ts'],
-    setupFiles: ['tests/setup-env.ts'],
     // Run test files sequentially so integration tests sharing the single
     // Postgres test database don't truncate each other's rows mid-test.
     fileParallelism: false,

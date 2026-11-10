@@ -28,7 +28,11 @@ export function createWorkerContainer(overrides: WorkerContainerOverrides = {}):
   const config = overrides.config ?? AppConfig.fromEnvironment();
   const logger = overrides.logger ?? createLogger(config);
   const database = new PrismaDatabase(config.databaseUrl);
-  const redis = new RedisConnection({ url: config.redisUrl, keyPrefix: config.redisKeyPrefix });
+  const redis = new RedisConnection({
+    cacheUrl: config.redisCacheUrl,
+    queueUrl: config.redisQueueUrl,
+    keyPrefix: config.redisKeyPrefix,
+  });
 
   // Real SMTP delivery arrives with the register step.
   const emailSender = overrides.emailSender ?? new LogEmailSender(logger);

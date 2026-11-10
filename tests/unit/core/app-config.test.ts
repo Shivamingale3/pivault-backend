@@ -5,7 +5,8 @@ const VALID = {
   APP_PORT: '4000',
   APP_ENV: 'production',
   DATABASE_URL: 'postgresql://user:secret-password@localhost:5432/app',
-  REDIS_URL: 'redis://:redis-secret@localhost:6379/0',
+  REDIS_CACHE_URL: 'redis://:cache-secret@localhost:6379/0',
+  REDIS_QUEUE_URL: 'redis://:queue-secret@localhost:6380/0',
   REDIS_KEY_PREFIX: 'pivault',
 };
 
@@ -15,7 +16,8 @@ describe('AppConfig', () => {
     expect(config.port).toBe(4000);
     expect(config.environment).toBe('production');
     expect(config.databaseUrl).toBe(VALID.DATABASE_URL);
-    expect(config.redisUrl).toBe(VALID.REDIS_URL);
+    expect(config.redisCacheUrl).toBe(VALID.REDIS_CACHE_URL);
+    expect(config.redisQueueUrl).toBe(VALID.REDIS_QUEUE_URL);
     expect(config.redisKeyPrefix).toBe('pivault');
   });
 
@@ -49,10 +51,11 @@ describe('AppConfig', () => {
       ...VALID,
       APP_PORT: 'not-a-port',
       DATABASE_URL: 'mysql://u:hunter2@h/db',
-      REDIS_URL: 'http://:hunter3@h',
+      REDIS_CACHE_URL: 'http://:hunter3@h',
+      REDIS_QUEUE_URL: 'http://:hunter4@h',
     };
     expect(() => AppConfig.fromValues(leaky)).toThrow(
-      expect.objectContaining({ message: expect.not.stringMatching(/hunter[23]/) }),
+      expect.objectContaining({ message: expect.not.stringMatching(/hunter[234]/) }),
     );
   });
 

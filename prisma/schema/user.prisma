@@ -5,8 +5,10 @@ model User {
   lastName                String    @db.VarChar(50)
   /// Stored lower-cased; unique across users.
   email                   String    @unique @db.VarChar(254)
-  /// E.164, e.g. +919876543210; unique across users.
-  mobile                  String    @unique @db.VarChar(16)
+  /// Calling-code digits without "+", e.g. "91". Always paired with `mobile`.
+  countryCode             String    @db.VarChar(3)
+  /// National significant number, digits only, e.g. "9876543210"; unique per country code.
+  mobile                  String    @db.VarChar(14)
   /// argon2id hash of the account password (never the vault key).
   passwordHash            String
   passwordChangedAt       DateTime?
@@ -16,6 +18,8 @@ model User {
   updatedAt               DateTime  @updatedAt
 
   session Session?
+
+  @@unique([countryCode, mobile])
 
   @@map("users")
 }

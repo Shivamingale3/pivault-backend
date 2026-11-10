@@ -27,7 +27,8 @@ export class InMemoryUserRepository implements IUserRepository {
   async create(data: CreateUserData): Promise<User> {
     for (const row of this.rows.values()) {
       if (row.email === data.email) throw new UserConflictError('email');
-      if (row.mobile === data.mobile) throw new UserConflictError('mobile');
+      if (row.countryCode === data.countryCode && row.mobile === data.mobile)
+        throw new UserConflictError('mobile');
     }
     const now = new Date();
     const row: UserWithPasswordHash = {
