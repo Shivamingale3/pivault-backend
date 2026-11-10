@@ -1,8 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import { createHealthModule } from '../../src/modules/health/health.module.js';
 import { createTestContainer } from '../helpers/app.js';
+import express from 'express';
 
-const { app } = createTestContainer();
+const container = createTestContainer();
+const { app } = container;
+
+beforeAll(() => container.resources.connectAll());
+afterAll(async () => {
+  await container.resources.disconnectAll();
+});
 
 describe('GET /api/health', () => {
   it('returns 200 with success: true and a healthy message', async () => {
@@ -18,6 +26,28 @@ describe('GET /api/health', () => {
   it('returns the correct content-type', async () => {
     const res = await request(app).get('/api/health');
     expect(res.headers['content-type']).toContain('application/json');
+  });
+});
+
+describe('GET /api/health/ready', () => {
+  it('is ready when Postgres, Redis and the queue answer', async () => {
+    const res = await request(app).get('/api/health/ready');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ database: true, redis: true, 'queue:email': true });
+  });
+
+  it('returns 503 naming the dependency that is down', async () => {
+    const isolated = express().use(
+      '/health',
+      createHealthModule(() => Promise.resolve({ database: true, redis: false })).getRouter(),
+    );
+    const res = await request(isolated).get('/health/ready');
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      success: false,
+      message: 'Server is not ready',
+      data: { database: true, redis: false },
+    });
   });
 });
 

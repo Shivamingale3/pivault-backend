@@ -5,6 +5,8 @@ const VALID = {
   APP_PORT: '4000',
   APP_ENV: 'production',
   DATABASE_URL: 'postgresql://user:secret-password@localhost:5432/app',
+  REDIS_URL: 'redis://:redis-secret@localhost:6379/0',
+  REDIS_KEY_PREFIX: 'pivault',
 };
 
 describe('AppConfig', () => {
@@ -13,6 +15,8 @@ describe('AppConfig', () => {
     expect(config.port).toBe(4000);
     expect(config.environment).toBe('production');
     expect(config.databaseUrl).toBe(VALID.DATABASE_URL);
+    expect(config.redisUrl).toBe(VALID.REDIS_URL);
+    expect(config.redisKeyPrefix).toBe('pivault');
   });
 
   it.each([
@@ -41,9 +45,14 @@ describe('AppConfig', () => {
   });
 
   it('never leaks raw values (e.g. credentials) in the error message', () => {
-    const leaky = { ...VALID, APP_PORT: 'not-a-port', DATABASE_URL: 'mysql://u:hunter2@h/db' };
+    const leaky = {
+      ...VALID,
+      APP_PORT: 'not-a-port',
+      DATABASE_URL: 'mysql://u:hunter2@h/db',
+      REDIS_URL: 'http://:hunter3@h',
+    };
     expect(() => AppConfig.fromValues(leaky)).toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining('hunter2') }),
+      expect.objectContaining({ message: expect.not.stringMatching(/hunter[23]/) }),
     );
   });
 

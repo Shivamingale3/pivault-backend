@@ -1,7 +1,7 @@
 import { config as loadDotenv } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import envSchema, { type AppEnvironment } from './env.schema.js';
+import envSchema, { type AppEnvironment, type Env } from './env.schema.js';
 
 /** backend/.env — resolves identically from src/core/config and dist/core/config. */
 const DEFAULT_ENV_FILE = path.resolve(
@@ -20,11 +20,15 @@ export class AppConfig {
   readonly port: number;
   readonly environment: AppEnvironment;
   readonly databaseUrl: string;
+  readonly redisUrl: string;
+  readonly redisKeyPrefix: string;
 
-  private constructor(values: { APP_PORT: number; APP_ENV: AppEnvironment; DATABASE_URL: string }) {
+  private constructor(values: Env) {
     this.port = values.APP_PORT;
     this.environment = values.APP_ENV;
     this.databaseUrl = values.DATABASE_URL;
+    this.redisUrl = values.REDIS_URL;
+    this.redisKeyPrefix = values.REDIS_KEY_PREFIX;
     Object.freeze(this);
   }
 

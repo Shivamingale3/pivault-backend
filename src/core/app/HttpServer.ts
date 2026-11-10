@@ -1,43 +1,46 @@
 import type { Server } from 'node:http';
 import type { Express } from 'express';
-import type { IDatabase } from '../database/IDatabase.js';
+import type { ResourceGroup } from '../lifecycle/ResourceGroup.js';
 import type { ILogger } from '../logger/ILogger.js';
 
 /**
- * Owns the process-level lifecycle: connect the database, start listening,
- * and tear both down again. Signal handling lives in the entry point so
- * this class stays free of `process` side effects and is unit-testable.
+ * Owns the API process lifecycle: connect resources (database, Redis), start
+ * listening, and tear both down again. Signal handling lives in the entry
+ * point so this class stays free of `process` side effects and is unit-testable.
  */
 export class HttpServer {
   private server: Server | null = null;
 
   constructor(
     private readonly app: Express,
-    private readonly database: IDatabase,
+    private readonly resources: ResourceGroup,
     private readonly logger: ILogger,
     private readonly port: number,
   ) {}
 
   /** Resolves with the actual bound port (useful when `port` is 0). */
   async start(): Promise<number> {
-    await this.database.connect();
-    this.logger.info('Database connection established successfully.');
+    await this.resources.connectAll();
 
-    const server = await new Promise<Server>((resolve, reject) => {
-      const instance = this.app.listen(this.port, (error?: Error) => {
-        if (error) reject(error);
-        else resolve(instance);
+    try {
+      this.server = await new Promise<Server>((resolve, reject) => {
+        const instance = this.app.listen(this.port, (error?: Error) => {
+          if (error) reject(error);
+          else resolve(instance);
+        });
       });
-    });
-    this.server = server;
+    } catch (error) {
+      await this.resources.disconnectAll();
+      throw error;
+    }
 
-    const address = server.address();
+    const address = this.server.address();
     const boundPort = typeof address === 'object' && address !== null ? address.port : this.port;
     this.logger.info(`Server is running on port ${boundPort}`);
     return boundPort;
   }
 
-  /** Stops accepting connections, waits for in-flight ones, then disconnects the DB. */
+  /** Stops accepting connections, waits for in-flight ones, then disconnects resources. */
   async stop(): Promise<void> {
     const server = this.server;
     this.server = null;
@@ -52,7 +55,6 @@ export class HttpServer {
       this.logger.info('HTTP server closed.');
     }
 
-    await this.database.disconnect();
-    this.logger.info('Database connection closed.');
+    await this.resources.disconnectAll();
   }
 }

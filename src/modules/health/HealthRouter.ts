@@ -11,5 +11,6 @@ export class HealthRouter extends BaseRouter {
 
   protected registerRoutes(router: Router): void {
     router.get('/', this.controller.getHealth);
+    router.get('/ready', this.controller.getReadiness);
   }
 }

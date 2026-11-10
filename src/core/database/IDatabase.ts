@@ -1,11 +1,9 @@
+import type { IManagedResource } from '../lifecycle/IManagedResource.js';
+
 /**
  * Database lifecycle contract. `TClient` is the query client handed to
- * repositories; lifecycle consumers (e.g. `HttpServer`) only need the methods.
+ * repositories; lifecycle consumers only need the `IManagedResource` methods.
  */
-export interface IDatabase<TClient = unknown> {
+export interface IDatabase<TClient = unknown> extends IManagedResource {
   readonly client: TClient;
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  /** Cheap round-trip used by readiness checks. Never throws. */
-  ping(): Promise<boolean>;
 }

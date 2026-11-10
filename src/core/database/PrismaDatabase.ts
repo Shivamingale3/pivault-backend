@@ -4,6 +4,7 @@ import type { IDatabase } from './IDatabase.js';
 
 /** Adapter: PrismaClient (on the node-postgres driver) behind `IDatabase`. */
 export class PrismaDatabase implements IDatabase<PrismaClient> {
+  readonly name = 'database';
   readonly client: PrismaClient;
 
   constructor(connectionString: string) {

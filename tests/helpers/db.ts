@@ -5,10 +5,8 @@ import { PrismaDatabase } from '../../src/core/database/PrismaDatabase.js';
 export const database = new PrismaDatabase(AppConfig.fromEnvironment().databaseUrl);
 export const db = database.client;
 
-/**
- * Truncates the users table between tests for isolation.
- * Use in beforeEach() of integration tests that hit the DB.
- */
+/** Clears users (sessions cascade). Use in beforeEach() of DB integration tests. */
 export async function truncateUsers(): Promise<void> {
+  await db.session.deleteMany({});
   await db.user.deleteMany({});
 }

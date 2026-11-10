@@ -1,0 +1,19 @@
+/// The single active session of a user (one user, one session). Logging in elsewhere replaces it.
+model Session {
+  id           String   @id @default(ulid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 (hex) of the opaque session token. The raw token is never stored.
+  tokenHash    String   @unique @db.Char(64)
+  /// Device public key (SPKI, base64url). Requests are signed with its non-extractable private key.
+  publicKey    String
+  keyAlgorithm String   @default("ECDSA-P256-SHA256") @db.VarChar(32)
+  userAgent    String?  @db.VarChar(512)
+  ipAddress    String?  @db.VarChar(45)
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+  @@map("sessions")
+}

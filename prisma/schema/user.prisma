@@ -1,9 +1,21 @@
+/// A vault owner. Created only through the local register API (no public sign-up).
 model User {
-  id        String   @id @default(ulid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String    @id @default(ulid())
+  firstName               String    @db.VarChar(50)
+  lastName                String    @db.VarChar(50)
+  /// Stored lower-cased; unique across users.
+  email                   String    @unique @db.VarChar(254)
+  /// E.164, e.g. +919876543210; unique across users.
+  mobile                  String    @unique @db.VarChar(16)
+  /// argon2id hash of the account password (never the vault key).
+  passwordHash            String
+  passwordChangedAt       DateTime?
+  /// Set once the client has generated its recovery key. The key itself never reaches the server.
+  recoveryKeyConfiguredAt DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  session Session?
 
   @@map("users")
 }

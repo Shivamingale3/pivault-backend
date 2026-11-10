@@ -25,8 +25,8 @@ async function main(): Promise<void> {
     await container.server.start();
     registerShutdownHooks(container);
   } catch (error) {
-    container.logger.error('Failed to connect to the database or start the server:', error);
-    await container.database.disconnect().catch(() => undefined);
+    // HttpServer already disconnected whatever had connected before the failure.
+    container.logger.error('Failed to connect dependencies or start the server:', error);
     process.exit(1);
   }
 }
