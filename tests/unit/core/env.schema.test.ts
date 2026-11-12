@@ -121,4 +121,66 @@ describe('envSchema', () => {
       expect(result.success).toBe(false);
     }
   });
+
+  describe('email (SMTP)', () => {
+    const base = { APP_ENV: 'development', DATABASE_URL: PG_URL, ...REDIS };
+    const email = {
+      EMAIL_HOST: 'smtp.example.com',
+      EMAIL_USER: 'user',
+      EMAIL_PASSWORD: 'secret',
+      EMAIL_FROM: 'PiVault <no-reply@example.com>',
+    };
+
+    it('is optional outside production and defaults the port to 587', () => {
+      const result = envSchema.parse(base);
+      expect(result.EMAIL_HOST).toBeUndefined();
+      expect(result.EMAIL_PORT).toBe(587);
+    });
+
+    it('accepts a full set', () => {
+      expect(envSchema.parse({ ...base, ...email, EMAIL_PORT: '465' }).EMAIL_PORT).toBe(465);
+    });
+
+    it('requires the whole set once any value is given', () => {
+      const result = envSchema.safeParse({ ...base, EMAIL_HOST: 'smtp.example.com' });
+      expect(result.success).toBe(false);
+      expect(JSON.stringify(result.error?.issues)).toContain('EMAIL_PASSWORD');
+    });
+
+    it('is mandatory in production', () => {
+      expect(envSchema.safeParse({ ...base, APP_ENV: 'production' }).success).toBe(false);
+      expect(
+        envSchema.safeParse({
+          ...base,
+          ...email,
+          APP_ENV: 'production',
+          APP_URL: 'https://vault.example.com',
+        }).success,
+      ).toBe(true);
+    });
+  });
+
+  describe('APP_URL', () => {
+    const base = { APP_ENV: 'production', DATABASE_URL: PG_URL, ...REDIS };
+    const email = {
+      EMAIL_HOST: 'h',
+      EMAIL_USER: 'u',
+      EMAIL_PASSWORD: 'p',
+      EMAIL_FROM: 'f@example.com',
+    };
+
+    it('is required in production and must be http(s)', () => {
+      expect(envSchema.safeParse({ ...base, ...email }).success).toBe(false);
+      expect(envSchema.safeParse({ ...base, ...email, APP_URL: 'ftp://x.com' }).success).toBe(
+        false,
+      );
+      expect(
+        envSchema.safeParse({ ...base, ...email, APP_URL: 'https://vault.example.com' }).success,
+      ).toBe(true);
+    });
+
+    it('is optional in development', () => {
+      expect(envSchema.safeParse({ ...base, APP_ENV: 'development' }).success).toBe(true);
+    });
+  });
 });

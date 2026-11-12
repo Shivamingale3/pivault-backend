@@ -9,6 +9,21 @@ const DEFAULT_ENV_FILE = path.resolve(
   '../../../.env',
 );
 
+const IMPLICIT_TLS_PORT = 465;
+/** Vite's dev server; only used when APP_URL is unset outside production. */
+const DEFAULT_DEV_APP_URL = 'http://localhost:5173';
+
+/** Outgoing-mail settings; `null` in AppConfig means "log emails instead of sending". */
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  /** true = implicit TLS; false = mandatory STARTTLS. */
+  secure: boolean;
+  user: string;
+  password: string;
+  from: string;
+}
+
 /**
  * Immutable, validated application configuration.
  *
@@ -23,6 +38,9 @@ export class AppConfig {
   readonly redisCacheUrl: string;
   readonly redisQueueUrl: string;
   readonly redisKeyPrefix: string;
+  /** Public PWA base URL (no trailing slash); links in emails are built from it. */
+  readonly appUrl: string;
+  readonly smtp: SmtpConfig | null;
 
   private constructor(values: Env) {
     this.port = values.APP_PORT;
@@ -31,6 +49,8 @@ export class AppConfig {
     this.redisCacheUrl = values.REDIS_CACHE_URL;
     this.redisQueueUrl = values.REDIS_QUEUE_URL;
     this.redisKeyPrefix = values.REDIS_KEY_PREFIX;
+    this.appUrl = (values.APP_URL ?? DEFAULT_DEV_APP_URL).replace(/\/+$/, '');
+    this.smtp = AppConfig.smtpFrom(values);
     Object.freeze(this);
   }
 
@@ -53,6 +73,21 @@ export class AppConfig {
       throw new Error(`Invalid environment configuration — ${details}`);
     }
     return new AppConfig(result.data);
+  }
+
+  private static smtpFrom(values: Env): SmtpConfig | null {
+    const {
+      EMAIL_HOST: host,
+      EMAIL_USER: user,
+      EMAIL_PASSWORD: password,
+      EMAIL_FROM: from,
+    } = values;
+    // The schema guarantees these four are set together.
+    if (host === undefined || user === undefined || password === undefined || from === undefined) {
+      return null;
+    }
+    const port = values.EMAIL_PORT;
+    return { host, port, secure: port === IMPLICIT_TLS_PORT, user, password, from };
   }
 
   get isDevelopment(): boolean {

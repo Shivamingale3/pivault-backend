@@ -8,6 +8,12 @@ const VALID = {
   REDIS_CACHE_URL: 'redis://:cache-secret@localhost:6379/0',
   REDIS_QUEUE_URL: 'redis://:queue-secret@localhost:6380/0',
   REDIS_KEY_PREFIX: 'pivault',
+  APP_URL: 'https://vault.example.com/',
+  EMAIL_HOST: 'smtp.example.com',
+  EMAIL_PORT: '587',
+  EMAIL_USER: 'user',
+  EMAIL_PASSWORD: 'secret',
+  EMAIL_FROM: 'PiVault <no-reply@example.com>',
 };
 
 describe('AppConfig', () => {
@@ -32,6 +38,36 @@ describe('AppConfig', () => {
       isProduction: config.isProduction,
       isTest: config.isTest,
     }).toEqual(flags);
+  });
+
+  it('has no smtp settings unless EMAIL_* is configured', () => {
+    const withoutEmail = Object.fromEntries(
+      Object.entries(VALID).filter(([key]) => !key.startsWith('EMAIL_')),
+    );
+    expect(AppConfig.fromValues({ ...withoutEmail, APP_ENV: 'development' }).smtp).toBeNull();
+  });
+
+  it.each([
+    ['587', false],
+    ['465', true],
+  ])('maps EMAIL_* to smtp settings (port %s → secure=%s)', (EMAIL_PORT, secure) => {
+    const config = AppConfig.fromValues({ ...VALID, EMAIL_PORT });
+    expect(config.smtp).toEqual({
+      host: 'smtp.example.com',
+      port: Number(EMAIL_PORT),
+      secure,
+      user: 'user',
+      password: 'secret',
+      from: 'PiVault <no-reply@example.com>',
+    });
+  });
+
+  it('exposes the app URL without a trailing slash, with a dev fallback', () => {
+    expect(AppConfig.fromValues(VALID).appUrl).toBe('https://vault.example.com');
+    const { APP_URL: _unused, ...noUrl } = VALID;
+    expect(AppConfig.fromValues({ ...noUrl, APP_ENV: 'development' }).appUrl).toBe(
+      'http://localhost:5173',
+    );
   });
 
   it('is immutable', () => {
