@@ -1,4 +1,4 @@
-// Deploys a pivault-backend image (already built by GitHub Actions) to staging on the Pi.
+// Deploys a pivault-backend image (already built by GitHub Actions) on the Pi.
 // Triggered by GitHub's "package published" webhook, or manually with IMAGE_TAG.
 
 def notify(String msg) {
@@ -22,7 +22,7 @@ pipeline {
   }
 
   parameters {
-    string(name: 'IMAGE_TAG', defaultValue: '', description: 'e.g. staging-abc1234 (the webhook fills this in)')
+    string(name: 'IMAGE_TAG', defaultValue: '', description: 'e.g. sha-abc1234 (the webhook fills this in)')
   }
 
   triggers {
@@ -30,7 +30,7 @@ pipeline {
       genericVariables: [[key: 'IMAGE_TAG', value: '$.package.package_version.container_metadata.tag.name', defaultValue: '']],
       tokenCredentialId: 'pivault-backend-hook-token',
       regexpFilterText: '$IMAGE_TAG',
-      regexpFilterExpression: '^staging-[0-9a-f]{7}$',
+      regexpFilterExpression: '^sha-[0-9a-f]{7}$',
       causeString: 'GHCR published $IMAGE_TAG',
       printContributedVariables: true
     )
@@ -40,15 +40,15 @@ pipeline {
     APP_DIR    = '/home/shiv/apps/pivault'
     IMAGE      = 'ghcr.io/shivamingale3/pivault-backend'
     STATE_FILE = '/home/shiv/apps/pivault/.deploy/backend.last-good'
-    HEALTH_URL = 'https://pivault-staging.shivamingale.com/api/health/ready'
+    HEALTH_URL = 'https://pivault.shivamingale.com/api/health/ready'
   }
 
   stages {
     stage('Validate') {
       steps {
         script {
-          if (!(params.IMAGE_TAG ==~ /^staging-[0-9a-f]{7}$/)) {
-            error "IMAGE_TAG '${params.IMAGE_TAG}' is not staging-<7 hex chars>"
+          if (!(params.IMAGE_TAG ==~ /^sha-[0-9a-f]{7}$/)) {
+            error "IMAGE_TAG '${params.IMAGE_TAG}' is not sha-<7 hex chars>"
           }
           env.PREV_TAG = sh(script: 'cat "$STATE_FILE" 2>/dev/null || true', returnStdout: true).trim()
           echo "Deploying ${params.IMAGE_TAG} (rollback target: ${env.PREV_TAG ?: 'none'})"
@@ -96,7 +96,7 @@ pipeline {
         docker images "$IMAGE" --format '{{.Tag}}' | grep -vx "$IMAGE_TAG" \
           | xargs -r -I{} docker rmi "$IMAGE:{}" || true
       '''
-      notify("✅ pivault-backend ${params.IMAGE_TAG} deployed to staging")
+      notify("✅ pivault-backend ${params.IMAGE_TAG} deployed")
     }
 
     failure {
