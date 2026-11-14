@@ -56,4 +56,17 @@ describe('PasswordResetTokenService', () => {
     expect(repo.byUser.size).toBe(1);
     expect(repo.byUser.get(userId)?.tokenHash).toBe(sha256Hex(second));
   });
+
+  it('sweeps expired tokens of other users when issuing a new one', async () => {
+    const stale = ulid();
+    await service.issue(stale, ResetPurpose.Reset);
+    const later = new PasswordResetTokenService(
+      repo,
+      () => new Date(NOW.getTime() + 16 * 60 * 1000),
+    );
+
+    await later.issue(ulid(), ResetPurpose.Reset);
+
+    expect(repo.byUser.has(stale)).toBe(false);
+  });
 });
