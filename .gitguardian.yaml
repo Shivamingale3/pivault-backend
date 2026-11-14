@@ -4,5 +4,5 @@
 version: 2
 secret:
   ignored_paths:
-    - "tests/**"
-    - "**/*.test.ts"
+    - 'tests/**'
+    - '**/*.test.ts'
