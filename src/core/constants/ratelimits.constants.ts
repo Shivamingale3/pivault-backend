@@ -22,6 +22,16 @@ export const RATE_LIMITS = {
     windowMs: ONE_MINUTE_MS,
     maxRequests: 5,
   },
+  /** Public link check: cheap, but one page load = one call, so allow a few retries. */
+  PASSWORD_LINK_VALIDATE: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 20,
+  },
+  /** Public link completion hashes with argon2, so it is kept tight like REGISTER. */
+  PASSWORD_LINK_COMPLETE: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 5,
+  },
 } as const satisfies Record<string, RateLimitConfig>;
 
 export type RateLimitKey = keyof typeof RATE_LIMITS;
