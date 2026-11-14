@@ -20,6 +20,10 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npx tsc
 
+# Drop dev dependencies (eslint, vitest, ...) so the runtime image ships production packages only.
+# `prisma` is a production dependency on purpose: Jenkins runs `prisma migrate deploy` in this image.
+RUN npm prune --omit=dev
+
 # ---- runtime ----
 FROM node:24-alpine AS runtime
 RUN apk add --no-cache openssl
