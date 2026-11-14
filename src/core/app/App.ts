@@ -15,6 +15,8 @@ export interface AppDependencies {
   errorHandler: ErrorHandler;
   notFoundHandler: NotFoundHandler;
   modules: readonly IRouteModule[];
+  /** Browser origins allowed to read API responses cross-origin (the PWA's own origin). */
+  allowedOrigins: readonly string[];
   /** Prefix every module is mounted under. Defaults to `/api`. */
   apiPrefix?: string;
 }
@@ -38,7 +40,9 @@ export class App {
 
     // Security headers + CORS before anything else touches the request.
     app.use(helmet());
-    app.use(cors());
+    // Production is same-origin (nginx serves the PWA and proxies /api), so this only matters in
+    // development. Any other origin gets no CORS headers and the browser blocks the read.
+    app.use(cors({ origin: [...this.deps.allowedOrigins] }));
 
     // Reject floods before spending CPU on body parsing.
     app.use(rateLimiterFactory.create('GLOBAL'));
