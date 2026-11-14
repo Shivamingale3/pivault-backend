@@ -107,6 +107,7 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
     errorHandler,
     notFoundHandler: new NotFoundHandler(),
     modules,
+    allowedOrigins: [new URL(config.appUrl).origin],
   }).build();
 
   const server = new HttpServer(app, resources, logger, config.port);
