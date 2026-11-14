@@ -16,6 +16,11 @@ describe('PrismaUserRepository', () => {
     expect(await repo.findByEmail(user.email)).toEqual(user);
   });
 
+  it('creates users unverified', async () => {
+    const user = await repo.create(userData());
+    expect(user.emailVerifiedAt).toBeNull();
+  });
+
   it('returns the hash only from findAuthByEmail', async () => {
     const data = userData();
     await repo.create(data);

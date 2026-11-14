@@ -14,6 +14,8 @@ export interface User {
   /** National number, digits only, e.g. "9876543210". */
   mobile: string;
   passwordChangedAt: Date | null;
+  /** Null until the user opens an emailed link; login must refuse unverified users. */
+  emailVerifiedAt: Date | null;
   recoveryKeyConfiguredAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

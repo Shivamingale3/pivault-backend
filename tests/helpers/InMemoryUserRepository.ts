@@ -35,6 +35,7 @@ export class InMemoryUserRepository implements IUserRepository {
       id: ulid(),
       ...data,
       passwordChangedAt: null,
+      emailVerifiedAt: null,
       recoveryKeyConfiguredAt: null,
       createdAt: now,
       updatedAt: now,
