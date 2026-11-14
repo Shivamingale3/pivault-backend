@@ -16,4 +16,6 @@ export interface IUserRepository {
   create(data: CreateUserData): Promise<User>;
   /** Idempotent: keeps the first timestamp. Returns false when the user doesn't exist. */
   markRecoveryKeyConfigured(id: string, at: Date): Promise<boolean>;
+  /** Removes the user (sessions and reset tokens cascade). Returns false when the user doesn't exist. */
+  delete(id: string): Promise<boolean>;
 }

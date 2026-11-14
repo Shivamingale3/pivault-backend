@@ -19,6 +19,6 @@ export interface CreateResetTokenData {
 
 export interface ReplacedResetToken {
   token: PasswordResetToken;
-  /** Hash of the token this one replaced, if any (to evict it from the cache). */
+  /** Hash of the token this one replaced, if any. */
   previousTokenHash: string | null;
 }

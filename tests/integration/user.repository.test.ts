@@ -38,4 +38,20 @@ describe('PrismaUserRepository', () => {
     expect((await repo.findById(user.id))?.recoveryKeyConfiguredAt).toEqual(first);
     expect(await repo.markRecoveryKeyConfigured('01J00000000000000000000000', first)).toBe(false);
   });
+
+  it('deletes a user (sessions and reset tokens cascade) and reports whether one existed', async () => {
+    const user = await repo.create(userData());
+    await db.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: 'a'.repeat(64),
+        purpose: 'onboarding',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    expect(await repo.delete(user.id)).toBe(true);
+    expect(await repo.findById(user.id)).toBeNull();
+    expect(await db.passwordResetToken.count()).toBe(0);
+    expect(await repo.delete(user.id)).toBe(false);
+  });
 });

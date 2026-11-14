@@ -1,23 +1,25 @@
 import type { IPasswordHasher } from '../../core/crypto/IPasswordHasher.js';
+import { HttpError } from '../../core/errors/HttpErrors.js';
 import type { ILogger } from '../../core/logger/ILogger.js';
-import type { IJobQueue } from '../../core/queue/queue.types.js';
-import type { EmailJobSchemas } from '../email/email.jobs.js';
+import type { WelcomeEmailService } from '../email/WelcomeEmailService.js';
 import type { User } from '../user/user.types.js';
 import type { UserService } from '../user/UserService.js';
 import type { RegisterInput } from './register.schema.js';
 
 export interface RegisterResult {
   user: User;
-  /** False when the welcome email could not be queued; the account still exists. */
-  welcomeEmailQueued: boolean;
 }
 
-/** Register flow: hash the password → store the user (DB enforces uniqueness) → queue welcome email. */
+/**
+ * Register flow: hash the password → store the user (DB enforces uniqueness) → send the
+ * welcome email. If the email cannot be sent the user is deleted again, so a failed
+ * registration can simply be retried.
+ */
 export class RegisterService {
   constructor(
     private readonly users: UserService,
     private readonly hasher: IPasswordHasher,
-    private readonly emailQueue: IJobQueue<EmailJobSchemas>,
+    private readonly welcomeEmail: WelcomeEmailService,
     private readonly logger: ILogger,
   ) {}
 
@@ -25,17 +27,23 @@ export class RegisterService {
     const { password, ...profile } = input;
     const passwordHash = await this.hasher.hash(password);
     const user = await this.users.create({ ...profile, passwordHash });
-    return { user, welcomeEmailQueued: await this.queueWelcomeEmail(user.id) };
+    try {
+      await this.welcomeEmail.send(user);
+    } catch (error) {
+      this.logger.error(`Could not send the welcome email for user ${user.id}.`, error);
+      await this.rollback(user.id);
+      throw new HttpError(502, 'Could not send the welcome email, registration was cancelled', {
+        cause: error,
+      });
+    }
+    return { user };
   }
 
-  /** A queue outage must not undo a successful registration. */
-  private async queueWelcomeEmail(userId: string): Promise<boolean> {
+  private async rollback(userId: string): Promise<void> {
     try {
-      await this.emailQueue.enqueue('welcome', { userId }, { jobId: `welcome-${userId}` });
-      return true;
+      await this.users.delete(userId);
     } catch (error) {
-      this.logger.error(`Could not queue the welcome email for user ${userId}.`, error);
-      return false;
+      this.logger.error(`Could not roll back user ${userId} after a failed registration.`, error);
     }
   }
 }

@@ -1,9 +1,6 @@
 import type { Express } from 'express';
 import { App } from './core/app/App.js';
 import { HttpServer } from './core/app/HttpServer.js';
-import type { ICache } from './core/cache/ICache.js';
-import { RedisCache } from './core/cache/RedisCache.js';
-import { RedisConnection } from './core/cache/RedisConnection.js';
 import { AppConfig } from './core/config/AppConfig.js';
 import { RATE_LIMITS } from './core/constants/ratelimits.constants.js';
 import { Argon2PasswordHasher } from './core/crypto/Argon2PasswordHasher.js';
@@ -20,30 +17,30 @@ import { LocalOnlyGuard } from './core/middlewares/LocalOnlyGuard.js';
 import { NotFoundHandler } from './core/middlewares/NotFoundHandler.js';
 import { RateLimiterFactory } from './core/middlewares/RateLimiterFactory.js';
 import { RequestValidator } from './core/middlewares/RequestValidator.js';
-import { BullMqJobQueue } from './core/queue/BullMqJobQueue.js';
-import { QueueName } from './core/queue/queue.constants.js';
-import type { IJobQueue } from './core/queue/queue.types.js';
+import type { IEmailSender } from './modules/email/IEmailSender.js';
+import { LogEmailSender } from './modules/email/LogEmailSender.js';
+import { SmtpEmailSender } from './modules/email/SmtpEmailSender.js';
+import { createSmtpTransport } from './modules/email/smtpTransport.js';
+import { WelcomeEmailService } from './modules/email/WelcomeEmailService.js';
+import { PasswordResetTokenService } from './modules/passwordReset/PasswordResetTokenService.js';
+import { PrismaPasswordResetRepository } from './modules/passwordReset/PrismaPasswordResetRepository.js';
 import { createHealthModule } from './modules/health/health.module.js';
 import { createRegisterModule } from './modules/register/register.module.js';
 import { RegisterService } from './modules/register/RegisterService.js';
 import { PrismaUserRepository } from './modules/user/PrismaUserRepository.js';
 import { UserService } from './modules/user/UserService.js';
-import { EMAIL_JOB_SCHEMAS, type EmailJobSchemas } from './modules/email/email.jobs.js';
 
 export interface ContainerOverrides {
   config?: AppConfig;
   logger?: ILogger;
   database?: PrismaDatabase;
-  redis?: RedisConnection;
+  emailSender?: IEmailSender;
 }
 
 export interface Container {
   config: AppConfig;
   logger: ILogger;
   database: PrismaDatabase;
-  redis: RedisConnection;
-  cache: ICache;
-  emailQueue: IJobQueue<EmailJobSchemas>;
   resources: ResourceGroup;
   app: Express;
   server: HttpServer;
@@ -65,25 +62,14 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   const config = overrides.config ?? AppConfig.fromEnvironment();
   const logger = overrides.logger ?? createLogger(config);
   const database = overrides.database ?? new PrismaDatabase(config.databaseUrl);
-  const redis =
-    overrides.redis ??
-    new RedisConnection({
-      cacheUrl: config.redisCacheUrl,
-      queueUrl: config.redisQueueUrl,
-      keyPrefix: config.redisKeyPrefix,
-    });
-  const cache = new RedisCache(redis.cache, logger);
+  // SMTP when configured (always in production); otherwise emails are only logged.
+  const emailSender =
+    overrides.emailSender ??
+    (config.smtp
+      ? new SmtpEmailSender(createSmtpTransport(config.smtp), config.smtp.from, logger)
+      : new LogEmailSender(logger));
 
-  // Producer only; the worker process (src/worker.ts) consumes.
-  const emailQueue = new BullMqJobQueue({
-    name: QueueName.Email,
-    schemas: EMAIL_JOB_SCHEMAS,
-    connection: redis.createBullConnection(),
-    prefix: redis.queuePrefix,
-  });
-
-  // Connected in this order, disconnected in reverse.
-  const resources = new ResourceGroup([database, redis, emailQueue], logger);
+  const resources = new ResourceGroup([database], logger);
 
   const errorHandler = new ErrorHandler(logger, [
     new AppErrorMapper(),
@@ -99,7 +85,11 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   const registerService = new RegisterService(
     userService,
     new Argon2PasswordHasher(),
-    emailQueue,
+    new WelcomeEmailService(
+      emailSender,
+      new PasswordResetTokenService(new PrismaPasswordResetRepository(database.client)),
+      config.appUrl,
+    ),
     logger,
   );
   const modules = [
@@ -121,5 +111,5 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
 
   const server = new HttpServer(app, resources, logger, config.port);
 
-  return { config, logger, database, redis, cache, emailQueue, resources, app, server };
+  return { config, logger, database, resources, app, server };
 }

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { ApiResponse } from '../../core/http/ApiResponse.js';
 import { BaseController } from '../../core/http/BaseController.js';
 
-/** `{ database: true, redis: false }`. */
+/** `{ database: true }`. */
 export type ReadinessCheck = () => Promise<Record<string, boolean>>;
 
 export class HealthController extends BaseController {

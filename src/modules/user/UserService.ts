@@ -19,6 +19,11 @@ export class UserService {
     return this.users.create(data);
   }
 
+  /** Removes a user, e.g. to undo a registration that could not be completed. */
+  async delete(id: string): Promise<void> {
+    await this.users.delete(id);
+  }
+
   async markRecoveryKeyConfigured(id: string, at: Date = new Date()): Promise<void> {
     const found = await this.users.markRecoveryKeyConfigured(id, at);
     if (!found) throw new NotFoundError(USER_NOT_FOUND);

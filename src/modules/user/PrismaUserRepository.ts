@@ -48,6 +48,11 @@ export class PrismaUserRepository implements IUserRepository {
     }
   }
 
+  async delete(id: string): Promise<boolean> {
+    const { count } = await this.prisma.user.deleteMany({ where: { id } });
+    return count > 0;
+  }
+
   async markRecoveryKeyConfigured(id: string, at: Date): Promise<boolean> {
     const { count } = await this.prisma.user.updateMany({
       where: { id, recoveryKeyConfiguredAt: null },

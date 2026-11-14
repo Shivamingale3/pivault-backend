@@ -3,7 +3,7 @@ import type { IManagedResource } from './IManagedResource.js';
 
 /**
  * Connects resources in order and disconnects them in reverse, so dependents
- * (e.g. queue workers) shut down before what they depend on (Redis, database).
+ * shut down before what they depend on.
  */
 export class ResourceGroup {
   private connected: IManagedResource[] = [];
@@ -42,7 +42,7 @@ export class ResourceGroup {
     }
   }
 
-  /** `{ database: true, redis: false }`, for readiness endpoints. */
+  /** `{ database: true }`, for readiness endpoints. */
   async pingAll(): Promise<Record<string, boolean>> {
     const results = await Promise.all(
       this.resources.map(async (resource) => [resource.name, await resource.ping()] as const),

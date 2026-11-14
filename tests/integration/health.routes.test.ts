@@ -30,23 +30,23 @@ describe('GET /api/health', () => {
 });
 
 describe('GET /api/health/ready', () => {
-  it('is ready when Postgres, Redis and the queue answer', async () => {
+  it('is ready when Postgres answers', async () => {
     const res = await request(app).get('/api/health/ready');
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ database: true, redis: true, 'queue:email': true });
+    expect(res.body.data).toEqual({ database: true });
   });
 
   it('returns 503 naming the dependency that is down', async () => {
     const isolated = express().use(
       '/health',
-      createHealthModule(() => Promise.resolve({ database: true, redis: false })).getRouter(),
+      createHealthModule(() => Promise.resolve({ database: false })).getRouter(),
     );
     const res = await request(isolated).get('/health/ready');
     expect(res.status).toBe(503);
     expect(res.body).toEqual({
       success: false,
       message: 'Server is not ready',
-      data: { database: true, redis: false },
+      data: { database: false },
     });
   });
 });

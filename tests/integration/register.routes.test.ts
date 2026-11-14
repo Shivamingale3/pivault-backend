@@ -3,7 +3,6 @@ import request from 'supertest';
 import { createContainer } from '../../src/container.js';
 import { NoopLogger } from '../../src/core/logger/NoopLogger.js';
 import { db, truncateUsers } from '../helpers/db.js';
-import { flushTestRedis } from '../helpers/redis.js';
 
 const container = createContainer({ logger: new NoopLogger() });
 const URL = '/api/internal/register';
@@ -23,7 +22,6 @@ beforeEach(truncateUsers);
 afterAll(async () => {
   await truncateUsers();
   await container.resources.disconnectAll();
-  await flushTestRedis();
 });
 
 describe('POST /api/internal/register', () => {
@@ -31,7 +29,7 @@ describe('POST /api/internal/register', () => {
     const res = await request(container.app).post(URL).send(body());
 
     expect(res.status).toBe(201);
-    expect(res.body.data.welcomeEmailQueued).toBe(true);
+    expect(Object.keys(res.body.data)).toEqual(['user']);
     expect(res.body.data.user).toMatchObject({
       email: 'jane@example.com',
       countryCode: '91',
@@ -43,6 +41,7 @@ describe('POST /api/internal/register', () => {
     expect(row.passwordHash).toMatch(/^\$argon2id\$/);
     expect(row.countryCode).toBe('91');
     expect(row.mobile).toBe('9876543210');
+    expect(await db.passwordResetToken.count({ where: { userId: row.id } })).toBe(1);
   });
 
   it('returns 409 for a duplicate email or mobile', async () => {

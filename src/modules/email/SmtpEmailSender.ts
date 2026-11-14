@@ -14,7 +14,7 @@ export interface IMailTransport {
   }): Promise<unknown>;
 }
 
-/** Delivers rendered emails over SMTP. Failures throw so the queue retries with backoff. */
+/** Delivers rendered emails over SMTP. Failures throw to the caller. */
 export class SmtpEmailSender implements IEmailSender {
   constructor(
     private readonly transport: IMailTransport,

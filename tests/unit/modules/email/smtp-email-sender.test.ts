@@ -25,7 +25,7 @@ describe('SmtpEmailSender', () => {
     expect(logger.info).toHaveBeenCalledWith(expect.not.stringContaining('jane@example.com'));
   });
 
-  it('throws a sanitised error (queue retries) and keeps the cause', async () => {
+  it('throws a sanitised error and keeps the cause', async () => {
     const cause = new Error('535 auth failed for jane@example.com');
     const transport = { sendMail: vi.fn((_mail: unknown) => Promise.reject(cause)) };
     const sending = new SmtpEmailSender(transport, 'a@b.co', createFakeLogger()).send(message);

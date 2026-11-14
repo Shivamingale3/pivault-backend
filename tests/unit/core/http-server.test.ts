@@ -11,10 +11,10 @@ function build() {
     res.send('pong');
   });
   const database = createFakeResource('database');
-  const redis = createFakeResource('redis');
+  const dependency = createFakeResource('dependency');
   const logger = createFakeLogger();
-  const server = new HttpServer(app, new ResourceGroup([database, redis], logger), logger, 0);
-  return { server, database, redis };
+  const server = new HttpServer(app, new ResourceGroup([database, dependency], logger), logger, 0);
+  return { server, database, dependency };
 }
 
 let active: HttpServer | null = null;
@@ -26,31 +26,31 @@ afterEach(async () => {
 
 describe('HttpServer', () => {
   it('connects every resource before listening and serves requests', async () => {
-    const { server, database, redis } = build();
+    const { server, database, dependency } = build();
     active = server;
     const port = await server.start();
 
     expect(database.connect).toHaveBeenCalledOnce();
-    expect(redis.connect).toHaveBeenCalledOnce();
+    expect(dependency.connect).toHaveBeenCalledOnce();
     expect(port).toBeGreaterThan(0);
     const res = await request(`http://127.0.0.1:${port}`).get('/ping');
     expect(res.text).toBe('pong');
   });
 
   it('stop() closes the listener and disconnects resources', async () => {
-    const { server, database, redis } = build();
+    const { server, database, dependency } = build();
     const port = await server.start();
     await server.stop();
 
     expect(database.disconnect).toHaveBeenCalledOnce();
-    expect(redis.disconnect).toHaveBeenCalledOnce();
+    expect(dependency.disconnect).toHaveBeenCalledOnce();
     await expect(request(`http://127.0.0.1:${port}`).get('/ping')).rejects.toThrow();
   });
 
   it('does not listen when a resource fails, and releases the ones already connected', async () => {
-    const { server, database, redis } = build();
-    redis.connect.mockRejectedValueOnce(new Error('redis down'));
-    await expect(server.start()).rejects.toThrow('redis down');
+    const { server, database, dependency } = build();
+    dependency.connect.mockRejectedValueOnce(new Error('dependency down'));
+    await expect(server.start()).rejects.toThrow('dependency down');
     expect(database.disconnect).toHaveBeenCalledOnce();
   });
 

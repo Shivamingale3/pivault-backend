@@ -6,8 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Applies any pending migrations to the Postgres test database, once per run.
- * DATABASE_URL is pointed at TEST_DATABASE_URL by vitest.config.ts. Redis needs no
- * setup: tests share the configured cache/queue servers under the `pivault-test` key prefix.
+ * DATABASE_URL is pointed at TEST_DATABASE_URL by vitest.config.ts.
  *
  * Deliberately non-destructive (`migrate deploy`, never `migrate reset`):
  * data isolation is handled per test via the truncate helpers in
