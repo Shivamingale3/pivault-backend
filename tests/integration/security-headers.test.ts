@@ -72,6 +72,13 @@ describe('security headers on every response path', () => {
     expectSecurityHeaders(res.headers);
   });
 
+  it.each(['validate', 'complete'])('public password-link route: %s (400)', async (action) => {
+    const res = await request(app).post(`/api/auth/password-links/${action}`).send({});
+    expect(res.status).toBe(400);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expectSecurityHeaders(res.headers);
+  });
+
   it('CORS preflight (204)', async () => {
     const res = await request(app)
       .options('/api/health')

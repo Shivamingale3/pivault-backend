@@ -22,8 +22,11 @@ export class PasswordResetTokenService implements IResetTokenIssuer {
   ) {}
 
   async issue(userId: string, purpose: ResetPurpose): Promise<string> {
+    const now = this.now();
+    // Housekeeping rides along with issuing: no scheduler or queue needed at this scale.
+    await this.tokens.deleteExpired(now);
     const raw = randomBytes(TOKEN_BYTES).toString('base64url');
-    const expiresAt = new Date(this.now().getTime() + RESET_TOKEN_TTL_SECONDS[purpose] * 1000);
+    const expiresAt = new Date(now.getTime() + RESET_TOKEN_TTL_SECONDS[purpose] * 1000);
     await this.tokens.replaceForUser({ userId, tokenHash: sha256Hex(raw), purpose, expiresAt });
     return raw;
   }

@@ -22,3 +22,15 @@ export interface ReplacedResetToken {
   /** Hash of the token this one replaced, if any. */
   previousTokenHash: string | null;
 }
+
+export interface ConsumeResetTokenData {
+  tokenHash: string;
+  /** Argon2 hash of the new password (hashed before the transaction, never inside it). */
+  passwordHash: string;
+  now: Date;
+}
+
+export interface ConsumedResetToken {
+  userId: string;
+  purpose: ResetPurpose;
+}

@@ -22,6 +22,8 @@ import { LogEmailSender } from './modules/email/LogEmailSender.js';
 import { SmtpEmailSender } from './modules/email/SmtpEmailSender.js';
 import { createSmtpTransport } from './modules/email/smtpTransport.js';
 import { WelcomeEmailService } from './modules/email/WelcomeEmailService.js';
+import { createPasswordLinkModule } from './modules/passwordLink/passwordLink.module.js';
+import { PasswordLinkService } from './modules/passwordLink/PasswordLinkService.js';
 import { PasswordResetTokenService } from './modules/passwordReset/PasswordResetTokenService.js';
 import { PrismaPasswordResetRepository } from './modules/passwordReset/PrismaPasswordResetRepository.js';
 import { createHealthModule } from './modules/health/health.module.js';
@@ -82,22 +84,31 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
 
   // Feature modules — register new ones here.
   const userService = new UserService(new PrismaUserRepository(database.client));
+  const hasher = new Argon2PasswordHasher();
+  const passwordResets = new PrismaPasswordResetRepository(database.client);
   const registerService = new RegisterService(
     userService,
-    new Argon2PasswordHasher(),
+    hasher,
     new WelcomeEmailService(
       emailSender,
-      new PasswordResetTokenService(new PrismaPasswordResetRepository(database.client)),
+      new PasswordResetTokenService(passwordResets),
       config.appUrl,
     ),
     logger,
   );
+  const passwordLinkService = new PasswordLinkService(passwordResets, hasher, logger);
+  const requestValidator = new RequestValidator();
   const modules = [
     createHealthModule(() => resources.pingAll()),
     createRegisterModule(registerService, {
       localOnly: new LocalOnlyGuard(logger).handle,
       rateLimiter: rateLimiterFactory.create('REGISTER'),
-      validator: new RequestValidator(),
+      validator: requestValidator,
+    }),
+    createPasswordLinkModule(passwordLinkService, {
+      validateLimiter: rateLimiterFactory.create('PASSWORD_LINK_VALIDATE'),
+      completeLimiter: rateLimiterFactory.create('PASSWORD_LINK_COMPLETE'),
+      validator: requestValidator,
     }),
   ];
 

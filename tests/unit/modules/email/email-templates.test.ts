@@ -19,6 +19,7 @@ describe('renderEmail', () => {
     expect(mail.html).toContain(`href="${SET_URL}"`);
     expect(mail.text).toContain(SET_URL);
     expect(mail.text).toContain('24 hours');
+    expect(mail.text).toContain('confirms your email address');
   });
 
   it('escapes user-controlled values in html but not in plain text', () => {

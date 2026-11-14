@@ -12,6 +12,8 @@ model User {
   /// argon2id hash of the account password (never the vault key).
   passwordHash            String
   passwordChangedAt       DateTime?
+  /// Set when the user proves they own the email by using an emailed link. Login requires it.
+  emailVerifiedAt         DateTime?
   /// Set once the client has generated its recovery key. The key itself never reaches the server.
   recoveryKeyConfiguredAt DateTime?
   createdAt               DateTime  @default(now())

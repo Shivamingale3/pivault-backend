@@ -13,6 +13,7 @@ const USER_SELECT = {
   countryCode: true,
   mobile: true,
   passwordChangedAt: true,
+  emailVerifiedAt: true,
   recoveryKeyConfiguredAt: true,
   createdAt: true,
   updatedAt: true,

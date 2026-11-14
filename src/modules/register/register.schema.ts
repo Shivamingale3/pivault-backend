@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { parseMobile } from '../user/phone.js';
-import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH, PASSWORD_RULES } from './register.constants.js';
+import { passwordSchema } from '../user/password.schema.js';
+import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH } from './register.constants.js';
 
 const name = (label: string): z.ZodString =>
   z
@@ -8,15 +9,6 @@ const name = (label: string): z.ZodString =>
     .trim()
     .min(1, `${label} is required`)
     .max(NAME_MAX_LENGTH, `${label} must be at most ${NAME_MAX_LENGTH} characters`);
-
-const password = z
-  .string({ error: 'Password is required' })
-  .min(PASSWORD_RULES.minLength, `Password must be at least ${PASSWORD_RULES.minLength} characters`)
-  .max(PASSWORD_RULES.maxLength, `Password must be at most ${PASSWORD_RULES.maxLength} characters`)
-  .regex(/[A-Z]/, 'Password needs an uppercase letter')
-  .regex(/[a-z]/, 'Password needs a lowercase letter')
-  .regex(/\d/, 'Password needs a digit')
-  .regex(/[^A-Za-z0-9]/, 'Password needs a special character');
 
 /** Body of the local register API. Output is normalised and ready for `UserService.create`. */
 export const registerSchema = z
@@ -37,7 +29,7 @@ export const registerSchema = z
       .string({ error: 'Mobile is required' })
       .trim()
       .regex(/^\d{4,14}$/, 'Mobile must be digits only, without the country code'),
-    password,
+    password: passwordSchema,
   })
   .strict()
   .transform((value, ctx) => {
