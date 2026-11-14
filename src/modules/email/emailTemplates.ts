@@ -43,7 +43,7 @@ function safeUrl(raw: string): string {
 function welcome(message: EmailMessage): RenderedEmail {
   const name = variable(message, 'firstName');
   const link = safeUrl(variable(message, 'resetUrl'));
-  const intro = `Hi ${name}, your ${APP_NAME} account is ready. Set your own password to get started. The link works for ${ONBOARDING_LINK_HOURS} hours.`;
+  const intro = `Hi ${name}, your ${APP_NAME} account is ready. Set your own password to get started; this also confirms your email address. The link works for ${ONBOARDING_LINK_HOURS} hours.`;
   const note = `After that you will set an app lock and save your recovery key. ${APP_NAME} never sees the key or what is inside your vault.`;
   return {
     subject: `Welcome to ${APP_NAME}: set your password`,
