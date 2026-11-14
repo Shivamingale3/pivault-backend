@@ -1,0 +1,8 @@
+# GitGuardian scan config. Tests use obviously fake credentials (Passw0rd!, postgres:postgres,
+# placeholder hashes); real code, config and docs are still scanned.
+# Never put a real secret in a test either: use `ggignore` on a single line only for a dummy value.
+version: 2
+secret:
+  ignored_paths:
+    - "tests/**"
+    - "**/*.test.ts"
