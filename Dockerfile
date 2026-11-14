@@ -36,6 +36,5 @@ USER node
 EXPOSE 5000
 
 # Migrations are NOT run here: Jenkins runs `npx prisma migrate deploy` once in a
-# throwaway container before switching. The worker reuses this image with
-# `node dist/worker.js`.
+# throwaway container before switching.
 CMD ["node", "dist/server.js"]

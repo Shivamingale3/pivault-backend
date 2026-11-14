@@ -16,8 +16,6 @@ process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/app_test';
 process.env.APP_ENV = 'test';
 process.env.APP_PORT = '0';
-// Tests share the .env Redis servers; this prefix isolates (and lets tests safely clean) their keys.
-process.env.REDIS_KEY_PREFIX = 'pivault-test';
 
 export default defineConfig({
   test: {

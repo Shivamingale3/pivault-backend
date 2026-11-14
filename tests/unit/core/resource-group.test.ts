@@ -22,24 +22,24 @@ function setup() {
 describe('ResourceGroup', () => {
   it('connects in order and disconnects in reverse', async () => {
     const { order, make, logger } = setup();
-    const group = new ResourceGroup([make('database'), make('redis'), make('workers')], logger);
+    const group = new ResourceGroup([make('database'), make('dependency'), make('other')], logger);
     await group.connectAll();
     await group.disconnectAll();
     expect(order).toEqual([
       'connect:database',
-      'connect:redis',
-      'connect:workers',
-      'disconnect:workers',
-      'disconnect:redis',
+      'connect:dependency',
+      'connect:other',
+      'disconnect:other',
+      'disconnect:dependency',
       'disconnect:database',
     ]);
   });
 
   it('rolls back what connected when a later resource fails', async () => {
     const { order, make, logger } = setup();
-    const redis = make('redis');
-    redis.connect.mockRejectedValueOnce(new Error('nope'));
-    const group = new ResourceGroup([make('database'), redis, make('workers')], logger);
+    const dependency = make('dependency');
+    dependency.connect.mockRejectedValueOnce(new Error('nope'));
+    const group = new ResourceGroup([make('database'), dependency, make('other')], logger);
     await expect(group.connectAll()).rejects.toThrow('nope');
     expect(order).toEqual(['connect:database', 'disconnect:database']);
     expect(logger.error).toHaveBeenCalled();
@@ -48,9 +48,9 @@ describe('ResourceGroup', () => {
   it('keeps disconnecting when one resource fails to close', async () => {
     const { make, logger } = setup();
     const database = make('database');
-    const redis = make('redis');
-    redis.disconnect.mockRejectedValueOnce(new Error('stuck'));
-    const group = new ResourceGroup([database, redis], logger);
+    const dependency = make('dependency');
+    dependency.disconnect.mockRejectedValueOnce(new Error('stuck'));
+    const group = new ResourceGroup([database, dependency], logger);
     await group.connectAll();
     await expect(group.disconnectAll()).resolves.toBeUndefined();
     expect(database.disconnect).toHaveBeenCalledOnce();
@@ -58,7 +58,7 @@ describe('ResourceGroup', () => {
 
   it('reports each resource in pingAll()', async () => {
     const { make, logger } = setup();
-    const group = new ResourceGroup([make('database'), make('redis', false)], logger);
-    await expect(group.pingAll()).resolves.toEqual({ database: true, redis: false });
+    const group = new ResourceGroup([make('database'), make('dependency', false)], logger);
+    await expect(group.pingAll()).resolves.toEqual({ database: true, dependency: false });
   });
 });

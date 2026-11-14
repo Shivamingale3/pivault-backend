@@ -43,6 +43,10 @@ export class InMemoryUserRepository implements IUserRepository {
     return this.publicCopy(row) as User;
   }
 
+  delete(id: string): Promise<boolean> {
+    return Promise.resolve(this.rows.delete(id));
+  }
+
   markRecoveryKeyConfigured(id: string, at: Date): Promise<boolean> {
     const row = this.rows.get(id);
     if (!row) return Promise.resolve(false);

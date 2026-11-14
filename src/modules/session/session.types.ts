@@ -28,6 +28,6 @@ export interface CreateSessionData {
 
 export interface ReplacedSession {
   session: Session;
-  /** Token hash of the session this one replaced, if any (to evict it from caches). */
+  /** Token hash of the session this one replaced, if any . */
   previousTokenHash: string | null;
 }

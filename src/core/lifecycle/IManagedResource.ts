@@ -1,5 +1,5 @@
 /**
- * Anything with a connect/disconnect lifecycle (database, Redis, queue workers).
+ * Anything with a connect/disconnect lifecycle (e.g. the database).
  * Entry points hand a list of these to `ResourceGroup`, which owns the ordering.
  */
 export interface IManagedResource {

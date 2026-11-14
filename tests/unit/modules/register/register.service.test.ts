@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UserConflictError } from '../../../../src/modules/user/user.errors.js';
+import { WelcomeEmailService } from '../../../../src/modules/email/WelcomeEmailService.js';
 import { UserService } from '../../../../src/modules/user/UserService.js';
 import type { RegisterInput } from '../../../../src/modules/register/register.schema.js';
 import { RegisterService } from '../../../../src/modules/register/RegisterService.js';
@@ -20,24 +21,30 @@ const makeHasher = () => ({
   hash: vi.fn((_password: string) => Promise.resolve('hashed')),
   verify: vi.fn((_hash: string, _password: string) => Promise.resolve(true)),
 });
-const makeQueue = () => ({ enqueue: vi.fn((..._args: unknown[]) => Promise.resolve('job-1')) });
+const makeSender = () => ({ send: vi.fn((_message: unknown) => Promise.resolve()) });
+const makeTokens = () => ({ issue: vi.fn((..._args: unknown[]) => Promise.resolve('raw-token')) });
 
 let hasher: ReturnType<typeof makeHasher>;
-let queue: ReturnType<typeof makeQueue>;
+let sender: ReturnType<typeof makeSender>;
 let logger: ReturnType<typeof createFakeLogger>;
 let service: RegisterService;
 
 beforeEach(() => {
   repo = new InMemoryUserRepository();
   hasher = makeHasher();
-  queue = makeQueue();
+  sender = makeSender();
   logger = createFakeLogger();
-  service = new RegisterService(new UserService(repo), hasher, queue, logger);
+  service = new RegisterService(
+    new UserService(repo),
+    hasher,
+    new WelcomeEmailService(sender, makeTokens(), 'https://vault.example.com'),
+    logger,
+  );
 });
 
 describe('RegisterService', () => {
-  it('stores the hash (never the password), splits the mobile and queues the welcome email', async () => {
-    const { user, welcomeEmailQueued } = await service.register(input);
+  it('stores the hash (never the password), splits the mobile and sends the welcome email', async () => {
+    const { user } = await service.register(input);
 
     const stored = repo.rows.get(user.id);
     expect(stored?.passwordHash).toBe('hashed');
@@ -45,24 +52,21 @@ describe('RegisterService', () => {
     expect(stored).toMatchObject({ countryCode: '91', mobile: '9876543210' });
     expect(user).not.toHaveProperty('passwordHash');
     expect(hasher.hash).toHaveBeenCalledWith('Passw0rd!');
-    expect(queue.enqueue).toHaveBeenCalledWith(
-      'welcome',
-      { userId: user.id },
-      { jobId: `welcome-${user.id}` },
+    expect(sender.send).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ to: 'jane@example.com' }),
     );
-    expect(welcomeEmailQueued).toBe(true);
   });
 
   it.each([
     ['email', { email: 'jane@example.com', mobile: '9000000001' }],
     ['mobile', { email: 'other@example.com' }],
-  ])('rejects a duplicate %s and queues nothing', async (field, override) => {
+  ])('rejects a duplicate %s and sends nothing', async (field, override) => {
     await service.register(input);
-    queue.enqueue.mockClear();
+    sender.send.mockClear();
     const duplicate = service.register({ ...input, ...override });
     await expect(duplicate).rejects.toBeInstanceOf(UserConflictError);
     await expect(duplicate).rejects.toMatchObject({ field });
-    expect(queue.enqueue).not.toHaveBeenCalled();
+    expect(sender.send).not.toHaveBeenCalled();
   });
 
   it('allows the same national number under a different country code', async () => {
@@ -72,11 +76,24 @@ describe('RegisterService', () => {
     ).resolves.toBeDefined();
   });
 
-  it('still registers when the queue is down, and reports it', async () => {
-    queue.enqueue.mockRejectedValueOnce(new Error('redis down'));
-    const result = await service.register(input);
-    expect(result.welcomeEmailQueued).toBe(false);
-    expect(repo.rows.size).toBe(1);
+  it('deletes the user and throws a 502 when the welcome email cannot be sent', async () => {
+    sender.send.mockRejectedValueOnce(new Error('smtp down'));
+    await expect(service.register(input)).rejects.toMatchObject({ statusCode: 502 });
+    expect(repo.rows.size).toBe(0);
     expect(logger.error).toHaveBeenCalledOnce();
+  });
+
+  it('allows registering again after a failed email', async () => {
+    sender.send.mockRejectedValueOnce(new Error('smtp down'));
+    await expect(service.register(input)).rejects.toBeDefined();
+    await expect(service.register(input)).resolves.toBeDefined();
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('still reports the email failure when the rollback itself fails', async () => {
+    sender.send.mockRejectedValueOnce(new Error('smtp down'));
+    repo.delete = () => Promise.reject(new Error('db down'));
+    await expect(service.register(input)).rejects.toMatchObject({ statusCode: 502 });
+    expect(logger.error).toHaveBeenCalledTimes(2);
   });
 });

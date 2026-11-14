@@ -35,9 +35,6 @@ export class AppConfig {
   readonly port: number;
   readonly environment: AppEnvironment;
   readonly databaseUrl: string;
-  readonly redisCacheUrl: string;
-  readonly redisQueueUrl: string;
-  readonly redisKeyPrefix: string;
   /** Public PWA base URL (no trailing slash); links in emails are built from it. */
   readonly appUrl: string;
   readonly smtp: SmtpConfig | null;
@@ -46,9 +43,6 @@ export class AppConfig {
     this.port = values.APP_PORT;
     this.environment = values.APP_ENV;
     this.databaseUrl = values.DATABASE_URL;
-    this.redisCacheUrl = values.REDIS_CACHE_URL;
-    this.redisQueueUrl = values.REDIS_QUEUE_URL;
-    this.redisKeyPrefix = values.REDIS_KEY_PREFIX;
     this.appUrl = (values.APP_URL ?? DEFAULT_DEV_APP_URL).replace(/\/+$/, '');
     this.smtp = AppConfig.smtpFrom(values);
     Object.freeze(this);

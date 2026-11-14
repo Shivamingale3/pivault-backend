@@ -4,7 +4,7 @@ import type { ResourceGroup } from '../lifecycle/ResourceGroup.js';
 import type { ILogger } from '../logger/ILogger.js';
 
 /**
- * Owns the API process lifecycle: connect resources (database, Redis), start
+ * Owns the API process lifecycle: connect resources (the database), start
  * listening, and tear both down again. Signal handling lives in the entry
  * point so this class stays free of `process` side effects and is unit-testable.
  */
