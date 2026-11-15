@@ -30,6 +30,9 @@ import { LoginThrottle } from './modules/auth/LoginThrottle.js';
 import { PrismaSessionRepository } from './modules/session/PrismaSessionRepository.js';
 import { SessionAuthGuard } from './modules/session/SessionAuthGuard.js';
 import { SessionStore } from './modules/session/SessionStore.js';
+import { createVaultModule } from './modules/vault/vault.module.js';
+import { PrismaVaultRepository } from './modules/vault/PrismaVaultRepository.js';
+import { VaultService } from './modules/vault/VaultService.js';
 import { createPasswordLinkModule } from './modules/passwordLink/passwordLink.module.js';
 import { PasswordLinkService } from './modules/passwordLink/PasswordLinkService.js';
 import { PasswordResetTokenService } from './modules/passwordReset/PasswordResetTokenService.js';
@@ -123,7 +126,9 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
     ),
     logger,
   );
+  const vaultService = new VaultService(new PrismaVaultRepository(database.client), logger);
   const requestValidator = new RequestValidator();
+  const requireSession = new SessionAuthGuard(sessionStore).handle;
   const modules = [
     createHealthModule(() => resources.pingAll()),
     createRegisterModule(registerService, {
@@ -134,9 +139,10 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
     createAuthModule(authService, forgotPasswordService, {
       loginLimiter: rateLimiterFactory.create('LOGIN'),
       forgotPasswordLimiter: rateLimiterFactory.create('FORGOT_PASSWORD'),
-      requireSession: new SessionAuthGuard(sessionStore).handle,
+      requireSession,
       validator: requestValidator,
     }),
+    createVaultModule(vaultService, { requireSession, validator: requestValidator }),
     createPasswordLinkModule(passwordLinkService, {
       validateLimiter: rateLimiterFactory.create('PASSWORD_LINK_VALIDATE'),
       completeLimiter: rateLimiterFactory.create('PASSWORD_LINK_COMPLETE'),

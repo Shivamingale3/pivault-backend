@@ -4,5 +4,10 @@ import type { Router } from 'express';
 export interface IRouteModule {
   /** Mount path relative to the API prefix, e.g. `/health`. */
   readonly basePath: string;
+  /**
+   * True when the module reads its own JSON body (with its own limit, after its own checks). The
+   * app-wide parser, with its small default limit, then skips this module's paths.
+   */
+  readonly parsesOwnBody?: boolean;
   getRouter(): Router;
 }
