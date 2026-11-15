@@ -96,6 +96,13 @@ describe('security headers on every response path', () => {
     },
   );
 
+  it.each(['pull', 'push'])('vault sync route without credentials: %s (401)', async (action) => {
+    const res = await request(app).post(`/api/vault/${action}`).send({});
+    expect(res.status).toBe(401);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expectSecurityHeaders(res.headers);
+  });
+
   it('CORS preflight (204)', async () => {
     const res = await request(app)
       .options('/api/health')

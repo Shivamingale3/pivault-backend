@@ -47,7 +47,20 @@ export class App {
     // Reject floods before spending CPU on body parsing.
     app.use(rateLimiterFactory.create('GLOBAL'));
 
-    app.use(express.json());
+    // Modules that read their own (larger) body are skipped, so it is parsed after their auth check.
+    const ownBodyPrefixes = this.deps.modules
+      .filter((module) => module.parsesOwnBody)
+      .map((module) => `${this.deps.apiPrefix ?? '/api'}${module.basePath}`);
+    const parseJson = express.json();
+    app.use((req, res, next) => {
+      if (
+        ownBodyPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))
+      ) {
+        next();
+        return;
+      }
+      parseJson(req, res, next);
+    });
     app.use(express.urlencoded({ extended: true }));
 
     const httpLogStream = {
