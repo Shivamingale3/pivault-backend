@@ -21,7 +21,15 @@ import type { IEmailSender } from './modules/email/IEmailSender.js';
 import { LogEmailSender } from './modules/email/LogEmailSender.js';
 import { SmtpEmailSender } from './modules/email/SmtpEmailSender.js';
 import { createSmtpTransport } from './modules/email/smtpTransport.js';
+import { PasswordResetEmailService } from './modules/email/PasswordResetEmailService.js';
 import { WelcomeEmailService } from './modules/email/WelcomeEmailService.js';
+import { createAuthModule } from './modules/auth/auth.module.js';
+import { AuthService } from './modules/auth/AuthService.js';
+import { ForgotPasswordService } from './modules/auth/ForgotPasswordService.js';
+import { LoginThrottle } from './modules/auth/LoginThrottle.js';
+import { PrismaSessionRepository } from './modules/session/PrismaSessionRepository.js';
+import { SessionAuthGuard } from './modules/session/SessionAuthGuard.js';
+import { SessionStore } from './modules/session/SessionStore.js';
 import { createPasswordLinkModule } from './modules/passwordLink/passwordLink.module.js';
 import { PasswordLinkService } from './modules/passwordLink/PasswordLinkService.js';
 import { PasswordResetTokenService } from './modules/passwordReset/PasswordResetTokenService.js';
@@ -83,7 +91,8 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   const rateLimiterFactory = new RateLimiterFactory(logger, RATE_LIMITS);
 
   // Feature modules — register new ones here.
-  const userService = new UserService(new PrismaUserRepository(database.client));
+  const userRepository = new PrismaUserRepository(database.client);
+  const userService = new UserService(userRepository);
   const hasher = new Argon2PasswordHasher();
   const passwordResets = new PrismaPasswordResetRepository(database.client);
   const registerService = new RegisterService(
@@ -97,12 +106,35 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
     logger,
   );
   const passwordLinkService = new PasswordLinkService(passwordResets, hasher, logger);
+  const sessionStore = new SessionStore(new PrismaSessionRepository(database.client));
+  const authService = new AuthService(
+    userRepository,
+    hasher,
+    sessionStore,
+    new LoginThrottle(),
+    logger,
+  );
+  const forgotPasswordService = new ForgotPasswordService(
+    userRepository,
+    new PasswordResetEmailService(
+      emailSender,
+      new PasswordResetTokenService(passwordResets),
+      config.appUrl,
+    ),
+    logger,
+  );
   const requestValidator = new RequestValidator();
   const modules = [
     createHealthModule(() => resources.pingAll()),
     createRegisterModule(registerService, {
       localOnly: new LocalOnlyGuard(logger).handle,
       rateLimiter: rateLimiterFactory.create('REGISTER'),
+      validator: requestValidator,
+    }),
+    createAuthModule(authService, forgotPasswordService, {
+      loginLimiter: rateLimiterFactory.create('LOGIN'),
+      forgotPasswordLimiter: rateLimiterFactory.create('FORGOT_PASSWORD'),
+      requireSession: new SessionAuthGuard(sessionStore).handle,
       validator: requestValidator,
     }),
     createPasswordLinkModule(passwordLinkService, {

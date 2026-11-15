@@ -32,6 +32,16 @@ export const RATE_LIMITS = {
     windowMs: ONE_MINUTE_MS,
     maxRequests: 5,
   },
+  /** Public login: every attempt costs an argon2 verify, so it is kept tight. */
+  LOGIN: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 10,
+  },
+  /** Public forgot-password: every call can send an email. */
+  FORGOT_PASSWORD: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 3,
+  },
 } as const satisfies Record<string, RateLimitConfig>;
 
 export type RateLimitKey = keyof typeof RATE_LIMITS;
