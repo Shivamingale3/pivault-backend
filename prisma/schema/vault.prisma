@@ -1,0 +1,24 @@
+/// One encrypted vault entry of a user. The server never sees plaintext: the four envelope
+/// columns are an opaque AES-256-GCM blob made on the device. Deleted entries stay as tombstones
+/// so other devices learn about the delete.
+model VaultEntry {
+  /// Entry id (ULID), chosen by the client. Unique per user, not globally.
+  id              String  @db.Char(26)
+  userId          String
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Position in the user's change log (see User.vaultSeq). Pull checkpoints use it.
+  seq             BigInt
+  /// Client clock (epoch ms) of the last change; the client uses it to resolve conflicts.
+  updatedAt       BigInt
+  deleted         Boolean @default(false)
+  envelopeVersion Int
+  algorithm       String  @db.VarChar(32)
+  /// Base64 of the 12 byte AES-GCM IV.
+  iv              String  @db.VarChar(32)
+  /// Base64 of the ciphertext + GCM tag.
+  ciphertext      String
+
+  @@id([userId, id])
+  @@unique([userId, seq])
+  @@map("vault_entries")
+}
