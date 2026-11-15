@@ -9,11 +9,13 @@ import {
 import { AuthService } from '../../../../src/modules/auth/AuthService.js';
 import { LoginThrottle } from '../../../../src/modules/auth/LoginThrottle.js';
 import { SessionStore } from '../../../../src/modules/session/SessionStore.js';
+import { fakePassword } from '../../../helpers/passwords.js';
 import { createFakeLogger } from '../../../helpers/fakes.js';
 import { InMemorySessionRepository } from '../../../helpers/InMemorySessionRepository.js';
 import { InMemoryUserRepository } from '../../../helpers/InMemoryUserRepository.js';
 
-const PASSWORD = 'Passw0rd!';
+const PASSWORD = fakePassword();
+const WRONG_PASSWORD = fakePassword();
 const NOW = new Date('2026-11-15T10:00:00Z');
 const request = (overrides = {}) => ({
   email: 'jane@example.com',
@@ -97,7 +99,7 @@ describe('AuthService.login', () => {
 
   it('answers a wrong password and an unknown email identically, and verifies in both cases', async () => {
     const wrong = await service
-      .login(request({ password: 'Wr0ng-pass!' }))
+      .login(request({ password: WRONG_PASSWORD }))
       .catch((e: unknown) => e);
     const unknown = await service
       .login(request({ email: 'ghost@example.com' }))
@@ -116,7 +118,7 @@ describe('AuthService.login', () => {
       statusCode: 403,
       message: EMAIL_NOT_VERIFIED_MESSAGE,
     });
-    await expect(service.login(request({ password: 'Wr0ng-pass!' }))).rejects.toMatchObject({
+    await expect(service.login(request({ password: WRONG_PASSWORD }))).rejects.toMatchObject({
       statusCode: 401,
     });
     expect(sessionRepo.byUser.size).toBe(0);
@@ -124,7 +126,7 @@ describe('AuthService.login', () => {
 
   it('blocks the account after repeated failures, even for the right password', async () => {
     for (let i = 0; i < LOGIN_MAX_FAILURES; i += 1) {
-      await expect(service.login(request({ password: 'Wr0ng-pass!' }))).rejects.toMatchObject({
+      await expect(service.login(request({ password: WRONG_PASSWORD }))).rejects.toMatchObject({
         statusCode: 401,
       });
     }
@@ -134,11 +136,11 @@ describe('AuthService.login', () => {
 
   it('a success resets the failure count', async () => {
     for (let i = 0; i < LOGIN_MAX_FAILURES - 1; i += 1) {
-      await service.login(request({ password: 'Wr0ng-pass!' })).catch(() => undefined);
+      await service.login(request({ password: WRONG_PASSWORD })).catch(() => undefined);
     }
     await service.login(request());
     for (let i = 0; i < LOGIN_MAX_FAILURES - 1; i += 1) {
-      await service.login(request({ password: 'Wr0ng-pass!' })).catch(() => undefined);
+      await service.login(request({ password: WRONG_PASSWORD })).catch(() => undefined);
     }
     await expect(service.login(request())).resolves.toBeDefined();
   });

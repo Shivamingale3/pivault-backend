@@ -12,6 +12,7 @@ import {
 import { CapturingEmailSender } from '../helpers/CapturingEmailSender.js';
 import { db, truncateUsers } from '../helpers/db.js';
 import { createDevice } from '../helpers/deviceKey.js';
+import { fakePassword } from '../helpers/passwords.js';
 
 /**
  * Login, logout and forgot-password through the real stack and Postgres. Every call uses its own
@@ -24,7 +25,9 @@ const LOGOUT = '/api/auth/logout';
 const FORGOT = '/api/auth/forgot-password';
 const RECOVERY = '/api/auth/recovery-key-configured';
 const EMAIL = 'jane@example.com';
-const PASSWORD = 'Passw0rd!';
+const PASSWORD = fakePassword();
+const WRONG_PASSWORD = fakePassword();
+const NEW_PASSWORD = fakePassword();
 
 let ipCounter = 0;
 const nextIp = (): string => `198.51.100.${++ipCounter}`;
@@ -105,7 +108,7 @@ describe('POST /api/auth/login', () => {
 
   it('answers a wrong password and an unknown email the same way', async () => {
     await createUser();
-    const wrong = await signIn(createDevice(), 'Wr0ng-pass!');
+    const wrong = await signIn(createDevice(), WRONG_PASSWORD);
     const unknown = await post(LOGIN).send({
       email: 'ghost@example.com',
       password: PASSWORD,
@@ -130,7 +133,7 @@ describe('POST /api/auth/login', () => {
     // Own email: the throttle lives in the container and would otherwise outlast this test.
     const email = 'locked@example.com';
     await createUser({ email, mobile: '9876543211' });
-    for (let i = 0; i < 5; i += 1) await signIn(createDevice(), 'Wr0ng-pass!', email);
+    for (let i = 0; i < 5; i += 1) await signIn(createDevice(), WRONG_PASSWORD, email);
     expect((await signIn(createDevice(), PASSWORD, email)).res.status).toBe(429);
   });
 
@@ -199,11 +202,11 @@ describe('POST /api/auth/forgot-password', () => {
     const token = url.searchParams.get('key') ?? '';
     const complete = await post('/api/auth/password-links/complete').send({
       token,
-      password: 'Brand-new1!',
+      password: NEW_PASSWORD,
     });
     expect(complete.status).toBe(200);
     expect(await db.session.count()).toBe(0);
-    expect((await signIn(createDevice(), 'Brand-new1!')).res.status).toBe(200);
+    expect((await signIn(createDevice(), NEW_PASSWORD)).res.status).toBe(200);
   });
 
   it('tells the caller when the email is unknown and sends nothing', async () => {
