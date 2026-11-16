@@ -159,6 +159,17 @@ describe('pull', () => {
     expect(done.checkpoint).toEqual(third.checkpoint);
   });
 
+  it('says how many changes are still waiting, so a new device can show progress', async () => {
+    await service.push(
+      ALICE,
+      Array.from({ length: 5 }, () => insert(fakeState())),
+    );
+    expect((await service.pull(ALICE, null, 2)).remaining).toBe(3);
+    expect((await service.pull(ALICE, { seq: 2 }, 2)).remaining).toBe(1);
+    expect((await service.pull(ALICE, { seq: 4 }, 2)).remaining).toBe(0);
+    expect((await service.pull(BOB, null)).remaining).toBe(0);
+  });
+
   it('lists an updated entry again, at its new place in the change order', async () => {
     const [a, b] = [fakeState(), fakeState()];
     await service.push(ALICE, [insert(a), insert(b)]);
@@ -170,7 +181,11 @@ describe('pull', () => {
   });
 
   it('starts at zero when the device has no checkpoint yet', async () => {
-    expect(await service.pull(ALICE, null)).toEqual({ documents: [], checkpoint: { seq: 0 } });
+    expect(await service.pull(ALICE, null)).toEqual({
+      documents: [],
+      checkpoint: { seq: 0 },
+      remaining: 0,
+    });
   });
 });
 

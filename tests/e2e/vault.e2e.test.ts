@@ -117,7 +117,7 @@ describe('pull and push', () => {
   it('starts empty', async () => {
     const res = await jane.call(PULL, { checkpoint: null });
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ documents: [], checkpoint: { seq: 0 } });
+    expect(res.body.data).toEqual({ documents: [], checkpoint: { seq: 0 }, remaining: 0 });
   });
 
   it('stores pushed entries and hands them back in RxDB format, paged by checkpoint', async () => {
@@ -132,6 +132,7 @@ describe('pull and push', () => {
     const first = await jane.call(PULL, { checkpoint: null, limit: 2 });
     expect(first.body.data.documents).toEqual(states.slice(0, 2).map(toDocument));
     expect(first.body.data.checkpoint).toEqual({ seq: 2 });
+    expect(first.body.data.remaining).toBe(1);
     const second = await jane.call(PULL, { checkpoint: first.body.data.checkpoint, limit: 2 });
     expect(second.body.data.documents).toEqual([toDocument(states[2] as VaultState)]);
     const done = await jane.call(PULL, { checkpoint: second.body.data.checkpoint });

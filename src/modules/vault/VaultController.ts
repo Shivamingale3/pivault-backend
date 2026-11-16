@@ -36,6 +36,7 @@ export class VaultController extends BaseController {
     this.ok(res, 'Vault changes', {
       documents: result.documents.map(toDto),
       checkpoint: result.checkpoint,
+      remaining: result.remaining,
     });
   };
 

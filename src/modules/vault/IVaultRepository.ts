@@ -17,5 +17,7 @@ export interface IVaultTransaction {
 export interface IVaultRepository {
   /** Entries with a change number above `afterSeq`, oldest change first. */
   listAfter(userId: string, afterSeq: number, limit: number): Promise<VaultRecord[]>;
+  /** How many entries have a change number above `afterSeq` (what is still to pull). */
+  countAfter(userId: string, afterSeq: number): Promise<number>;
   runExclusive<T>(userId: string, work: (tx: IVaultTransaction) => Promise<T>): Promise<T>;
 }
