@@ -28,7 +28,11 @@ export class ErrorHandler {
       const line = `${req.method} ${req.originalUrl} → ${mapped.statusCode}: ${mapped.message}`;
       if (mapped.statusCode >= 500) this.logger.error(line);
       else this.logger.warn(line);
-      res.status(mapped.statusCode).json({ success: false, message: mapped.message });
+      res.status(mapped.statusCode).json({
+        success: false,
+        message: mapped.message,
+        ...(mapped.data === undefined ? {} : { data: mapped.data }),
+      });
       return;
     }
 

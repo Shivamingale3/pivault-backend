@@ -5,6 +5,8 @@ import type { IErrorMapper, MappedError } from './IErrorMapper.js';
 export class AppErrorMapper implements IErrorMapper {
   map(error: unknown): MappedError | null {
     if (!(error instanceof AppError)) return null;
-    return { statusCode: error.statusCode, message: error.message };
+    return error.data === undefined
+      ? { statusCode: error.statusCode, message: error.message }
+      : { statusCode: error.statusCode, message: error.message, data: error.data };
   }
 }

@@ -30,6 +30,21 @@ function run(err: unknown, mappers?: IErrorMapper[]) {
 }
 
 describe('ErrorHandler', () => {
+  it('sends the extra data an AppError carries, and nothing when it has none', () => {
+    const withData = new ConflictError('Wait');
+    withData.data = { retryAfterSeconds: 30 };
+    const { res } = run(withData);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Wait',
+      data: { retryAfterSeconds: 30 },
+    });
+    expect(run(new ConflictError('Plain')).res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Plain',
+    });
+  });
+
   it('maps an AppError to its status and message, logged as a warning for 4xx', () => {
     const { res, logger } = run(new ConflictError('Email taken'));
     expect(res.status).toHaveBeenCalledWith(409);

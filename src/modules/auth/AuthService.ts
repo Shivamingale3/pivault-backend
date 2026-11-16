@@ -1,11 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { IPasswordHasher } from '../../core/crypto/IPasswordHasher.js';
 import { sha256Hex } from '../../core/crypto/hash.js';
-import {
-  ForbiddenError,
-  TooManyRequestsError,
-  UnauthorizedError,
-} from '../../core/errors/HttpErrors.js';
+import { ForbiddenError, UnauthorizedError } from '../../core/errors/HttpErrors.js';
 import type { ILogger } from '../../core/logger/ILogger.js';
 import { NOT_SIGNED_IN_MESSAGE } from '../session/session.constants.js';
 import type { SessionStore } from '../session/SessionStore.js';
@@ -15,8 +11,8 @@ import {
   INVALID_CREDENTIALS_MESSAGE,
   SESSION_TOKEN_BYTES,
   SESSION_TTL_DAYS,
-  TOO_MANY_LOGINS_MESSAGE,
 } from './auth.constants.js';
+import { LoginLockedError } from './loginLocked.error.js';
 import type { LoginRequest, LoginResult } from './auth.types.js';
 import type { LoginThrottle } from './LoginThrottle.js';
 
@@ -40,7 +36,8 @@ export class AuthService {
 
   async login(request: LoginRequest): Promise<LoginResult> {
     const { email, password } = request;
-    if (this.throttle.isBlocked(email)) throw new TooManyRequestsError(TOO_MANY_LOGINS_MESSAGE);
+    const locked = this.throttle.lockout(email);
+    if (locked) throw new LoginLockedError(locked);
 
     const user = await this.users.findAuthByEmail(email);
     // An unknown email still pays for one argon2 verify, so response time doesn't reveal accounts.
@@ -49,7 +46,9 @@ export class AuthService {
       password,
     );
     if (!user || !passwordOk) {
-      this.throttle.recordFailure(email);
+      // The wrong password that starts a lockout is answered with the lockout itself.
+      const started = this.throttle.recordFailure(email);
+      if (started) throw new LoginLockedError(started);
       throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
     }
     if (!user.emailVerifiedAt) throw new ForbiddenError(EMAIL_NOT_VERIFIED_MESSAGE);

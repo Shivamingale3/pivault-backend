@@ -133,8 +133,20 @@ describe('POST /api/auth/login', () => {
     // Own email: the throttle lives in the container and would otherwise outlast this test.
     const email = 'locked@example.com';
     await createUser({ email, mobile: '9876543211' });
-    for (let i = 0; i < 5; i += 1) await signIn(createDevice(), WRONG_PASSWORD, email);
-    expect((await signIn(createDevice(), PASSWORD, email)).res.status).toBe(429);
+    for (let i = 0; i < 4; i += 1) {
+      expect((await signIn(createDevice(), WRONG_PASSWORD, email)).res.status).toBe(401);
+    }
+    const fifth = await signIn(createDevice(), WRONG_PASSWORD, email);
+    expect(fifth.res.status).toBe(429);
+    expect(fifth.res.body.data).toEqual({
+      retryAfterSeconds: 30,
+      attempt: 5,
+      attemptsPerRound: 5,
+      nextWaitSeconds: 300,
+    });
+    const right = await signIn(createDevice(), PASSWORD, email);
+    expect(right.res.status).toBe(429);
+    expect(right.res.body.data.retryAfterSeconds).toBeLessThanOrEqual(30);
   });
 
   it('rejects a malformed body and a bad device key with 400', async () => {
