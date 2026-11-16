@@ -8,6 +8,7 @@ import type { ErrorHandler } from '../middlewares/ErrorHandler.js';
 import type { NotFoundHandler } from '../middlewares/NotFoundHandler.js';
 import type { RateLimiterFactory } from '../middlewares/RateLimiterFactory.js';
 import type { RateLimitKey } from '../constants/ratelimits.constants.js';
+import { recordBodyHash } from '../crypto/bodyHash.js';
 
 export interface AppDependencies {
   logger: ILogger;
@@ -51,7 +52,8 @@ export class App {
     const ownBodyPrefixes = this.deps.modules
       .filter((module) => module.parsesOwnBody)
       .map((module) => `${this.deps.apiPrefix ?? '/api'}${module.basePath}`);
-    const parseJson = express.json();
+    // The raw body's hash is remembered so signed requests can prove the body wasn't swapped.
+    const parseJson = express.json({ verify: recordBodyHash });
     app.use((req, res, next) => {
       if (
         ownBodyPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))

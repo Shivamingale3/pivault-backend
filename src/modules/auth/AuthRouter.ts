@@ -8,8 +8,8 @@ import type { AuthController } from './AuthController.js';
 export interface AuthGuards {
   loginLimiter: RequestHandler;
   forgotPasswordLimiter: RequestHandler;
-  /** Requires a signed request from the session's device (see `SessionAuthGuard`). */
-  requireSession: RequestHandler;
+  /** Requires a signed request (signature and body) from the session's device (see `SessionAuthGuard`). */
+  requireSession: RequestHandler[];
   validator: RequestValidator;
 }
 

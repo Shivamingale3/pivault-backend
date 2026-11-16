@@ -1,5 +1,10 @@
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  EMPTY_BODY_HASH,
+  recordBodyHash,
+  sha256Base64Url,
+} from '../../../../src/core/crypto/bodyHash.js';
 import { sha256Hex } from '../../../../src/core/crypto/hash.js';
 import { SIGNATURE_MAX_SKEW_MS } from '../../../../src/modules/session/session.constants.js';
 import { authOf, SessionAuthGuard } from '../../../../src/modules/session/SessionAuthGuard.js';
@@ -125,6 +130,62 @@ describe('SessionAuthGuard', () => {
     expect(await denied(device.signedHeaders(TOKEN, 'POST', PATH, NOW))).toMatchObject(
       UNAUTHORIZED,
     );
+  });
+
+  describe('signed bodies', () => {
+    const BODY = '{"rows":[]}';
+    const reqWith = (hash?: string) => {
+      const req = {} as Request;
+      if (hash !== undefined) recordBodyHash(req, null, Buffer.from(hash));
+      return req;
+    };
+    /** Runs `verifyBody` for a request whose received body was `received` (undefined: none). */
+    const check = (signedBodyHash: string | null, received?: string) => {
+      const res = { locals: { auth: { userId: 'u', sessionId: 's', signedBodyHash } } };
+      const next = vi.fn();
+      try {
+        guard.verifyBody(reqWith(received), res as unknown as Response, next);
+      } catch (error) {
+        return error;
+      }
+      return next.mock.calls.length === 1 ? 'ok' : 'not called';
+    };
+
+    it('accepts a signature that covers the body and remembers the signed hash', async () => {
+      const { outcome, res } = await run(device.signedWithBody(TOKEN, 'POST', PATH, BODY, NOW));
+      expect(outcome).toBe('ok');
+      expect(authOf(res).signedBodyHash).toBe(sha256Base64Url(BODY));
+    });
+
+    it('rejects a body hash that was not part of the signature, or is malformed', async () => {
+      const legacy = device.signedHeaders(TOKEN, 'POST', PATH, NOW);
+      expect(await denied({ ...legacy, 'X-Body-SHA256': sha256Base64Url(BODY) })).toMatchObject(
+        UNAUTHORIZED,
+      );
+      const signed = device.signedWithBody(TOKEN, 'POST', PATH, BODY, NOW);
+      expect(await denied({ ...signed, 'X-Body-SHA256': sha256Base64Url('other') })).toMatchObject(
+        UNAUTHORIZED,
+      );
+      expect(await denied({ ...signed, 'X-Body-SHA256': 'nope' })).toMatchObject(UNAUTHORIZED);
+    });
+
+    it('rejects a signature without the body once older apps are no longer accepted', async () => {
+      guard = new SessionAuthGuard(new SessionStore(repo, () => new Date(NOW)), () => NOW, false);
+      expect(await denied(device.signedHeaders(TOKEN, 'POST', PATH, NOW))).toMatchObject(
+        UNAUTHORIZED,
+      );
+      const { outcome } = await run(device.signedWithBody(TOKEN, 'POST', PATH, BODY, NOW));
+      expect(outcome).toBe('ok');
+    });
+
+    it('lets the body through only when it is the one that was signed', () => {
+      expect(check(sha256Base64Url(BODY), BODY)).toBe('ok');
+      expect(check(sha256Base64Url(BODY), '{"rows":[1]}')).toMatchObject(UNAUTHORIZED);
+      expect(check(sha256Base64Url(BODY))).toMatchObject(UNAUTHORIZED);
+      expect(check(EMPTY_BODY_HASH)).toBe('ok');
+      // An older app signed nothing about the body, so there is nothing to compare.
+      expect(check(null, BODY)).toBe('ok');
+    });
   });
 
   it('rejects a garbage signature without throwing', async () => {
