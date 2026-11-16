@@ -39,7 +39,12 @@ export class VaultService {
     const after = checkpoint?.seq ?? 0;
     const documents = await this.vault.listAfter(userId, after, limit);
     const last = documents.at(-1);
-    return { documents, checkpoint: { seq: last?.seq ?? after } };
+    const seq = last?.seq ?? after;
+    return {
+      documents,
+      checkpoint: { seq },
+      remaining: await this.vault.countAfter(userId, seq),
+    };
   }
 
   /**

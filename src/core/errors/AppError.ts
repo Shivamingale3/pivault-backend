@@ -8,6 +8,8 @@
 export abstract class AppError extends Error {
   readonly statusCode: number;
   readonly isOperational = true;
+  /** Extra client-safe details the client may act on (e.g. how long to wait). Sent as `data`. */
+  data?: unknown;
 
   constructor(statusCode: number, message: string, options?: ErrorOptions) {
     super(message, options);

@@ -29,6 +29,8 @@ export interface PullCheckpoint {
 export interface PullResult {
   documents: VaultRecord[];
   checkpoint: PullCheckpoint;
+  /** Changes still waiting after this page, so a new device can show real progress. */
+  remaining: number;
 }
 
 export interface PushRow {

@@ -8,9 +8,14 @@ export const TOO_MANY_LOGINS_MESSAGE = 'Too many failed sign-in attempts. Try ag
 export const SESSION_TTL_DAYS = 30;
 export const SESSION_TOKEN_BYTES = 32;
 
-/** Per-account throttle, on top of the per-IP rate limit. */
-export const LOGIN_MAX_FAILURES = 5;
-export const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+/**
+ * Per-account throttle, on top of the per-IP rate limit. Every 5th wrong password in a row starts
+ * a wait that grows each round: 30 seconds, then 5 minutes, then 1 hour (and stays at 1 hour).
+ */
+export const LOGIN_ATTEMPTS_PER_ROUND = 5;
+export const LOGIN_WAITS_MS = [30_000, 5 * 60_000, 60 * 60_000] as const;
+/** An account nobody has tried for this long starts again from the first round. */
+export const LOGIN_IDLE_RESET_MS = 24 * 60 * 60 * 1000;
 /** Bounds memory: emails that never log in are forgotten after the window anyway. */
 export const LOGIN_THROTTLE_MAX_ENTRIES = 10_000;
 

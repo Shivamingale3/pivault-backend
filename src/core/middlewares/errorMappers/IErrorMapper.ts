@@ -2,6 +2,8 @@
 export interface MappedError {
   statusCode: number;
   message: string;
+  /** Optional client-safe details, sent as `data` next to the message. */
+  data?: unknown;
 }
 
 /**

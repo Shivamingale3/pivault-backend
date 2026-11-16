@@ -27,6 +27,10 @@ export class PrismaVaultRepository implements IVaultRepository {
     return rows.map(toRecord);
   }
 
+  countAfter(userId: string, afterSeq: number): Promise<number> {
+    return this.prisma.vaultEntry.count({ where: { userId, seq: { gt: BigInt(afterSeq) } } });
+  }
+
   /**
    * Locks the user's row for the whole transaction, so concurrent pushes queue up. Each save takes
    * the next `vaultSeq`: numbers are therefore handed out, and committed, in the same order.

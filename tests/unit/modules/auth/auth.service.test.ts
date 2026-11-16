@@ -3,7 +3,7 @@ import { sha256Hex } from '../../../../src/core/crypto/hash.js';
 import {
   EMAIL_NOT_VERIFIED_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
-  LOGIN_MAX_FAILURES,
+  LOGIN_ATTEMPTS_PER_ROUND,
   SESSION_TTL_DAYS,
 } from '../../../../src/modules/auth/auth.constants.js';
 import { AuthService } from '../../../../src/modules/auth/AuthService.js';
@@ -124,22 +124,50 @@ describe('AuthService.login', () => {
     expect(sessionRepo.byUser.size).toBe(0);
   });
 
-  it('blocks the account after repeated failures, even for the right password', async () => {
-    for (let i = 0; i < LOGIN_MAX_FAILURES; i += 1) {
+  it('answers the 5th wrong password with the lockout itself, and refuses even the right one after', async () => {
+    for (let i = 0; i < LOGIN_ATTEMPTS_PER_ROUND - 1; i += 1) {
       await expect(service.login(request({ password: WRONG_PASSWORD }))).rejects.toMatchObject({
         statusCode: 401,
       });
     }
-    await expect(service.login(request())).rejects.toMatchObject({ statusCode: 429 });
+    const fifth = await service
+      .login(request({ password: WRONG_PASSWORD }))
+      .catch((e: unknown) => e);
+    expect(fifth).toMatchObject({
+      statusCode: 429,
+      data: { retryAfterSeconds: 30, attempt: 5, attemptsPerRound: 5, nextWaitSeconds: 300 },
+    });
+    await expect(service.login(request())).rejects.toMatchObject({
+      statusCode: 429,
+      data: { attempt: 5 },
+    });
     expect(sessionRepo.byUser.size).toBe(0);
   });
 
+  it('lets the account in again once the wait is over', async () => {
+    let now = NOW.getTime();
+    const clocked = new AuthService(
+      users,
+      hasher,
+      new SessionStore(sessionRepo),
+      new LoginThrottle(() => now),
+      logger,
+      () => NOW,
+    );
+    for (let i = 0; i < LOGIN_ATTEMPTS_PER_ROUND; i += 1) {
+      await clocked.login(request({ password: WRONG_PASSWORD })).catch(() => undefined);
+    }
+    await expect(clocked.login(request())).rejects.toMatchObject({ statusCode: 429 });
+    now += 31_000;
+    await expect(clocked.login(request())).resolves.toBeDefined();
+  });
+
   it('a success resets the failure count', async () => {
-    for (let i = 0; i < LOGIN_MAX_FAILURES - 1; i += 1) {
+    for (let i = 0; i < LOGIN_ATTEMPTS_PER_ROUND - 1; i += 1) {
       await service.login(request({ password: WRONG_PASSWORD })).catch(() => undefined);
     }
     await service.login(request());
-    for (let i = 0; i < LOGIN_MAX_FAILURES - 1; i += 1) {
+    for (let i = 0; i < LOGIN_ATTEMPTS_PER_ROUND - 1; i += 1) {
       await service.login(request({ password: WRONG_PASSWORD })).catch(() => undefined);
     }
     await expect(service.login(request())).resolves.toBeDefined();

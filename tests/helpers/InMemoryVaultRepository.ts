@@ -27,6 +27,12 @@ export class InMemoryVaultRepository implements IVaultRepository {
     return Promise.resolve(found.map((record) => structuredClone(record)));
   }
 
+  countAfter(userId: string, afterSeq: number): Promise<number> {
+    return Promise.resolve(
+      [...this.entriesOf(userId).values()].filter((record) => record.seq > afterSeq).length,
+    );
+  }
+
   runExclusive<T>(userId: string, work: (tx: IVaultTransaction) => Promise<T>): Promise<T> {
     const run = async (): Promise<T> => {
       const snapshot = structuredClone([...this.entriesOf(userId)]);
