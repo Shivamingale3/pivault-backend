@@ -144,6 +144,41 @@ describe('AuthService.login', () => {
     expect(sessionRepo.byUser.size).toBe(0);
   });
 
+  it('counts a burst of parallel guesses one at a time: only five reach the password check', async () => {
+    const burst = Array.from({ length: 20 }, (_, index) =>
+      service
+        .login(request({ password: index === 19 ? PASSWORD : WRONG_PASSWORD }))
+        .catch((e: unknown) => e),
+    );
+    const results = (await Promise.all(burst)) as { statusCode: number }[];
+    expect(hasher.verify).toHaveBeenCalledTimes(LOGIN_ATTEMPTS_PER_ROUND);
+    expect(results.filter((result) => result.statusCode === 401)).toHaveLength(
+      LOGIN_ATTEMPTS_PER_ROUND - 1,
+    );
+    expect(results.filter((result) => result.statusCode === 429)).toHaveLength(
+      20 - (LOGIN_ATTEMPTS_PER_ROUND - 1),
+    );
+    // The right password at the end of the burst is refused too: the lock was already on.
+    expect(sessionRepo.byUser.size).toBe(0);
+  });
+
+  it('keeps accounts independent: a queue on one does not hold up another', async () => {
+    await users.create({
+      firstName: 'Sam',
+      lastName: 'Roe',
+      email: 'sam@example.com',
+      countryCode: '91',
+      mobile: '9876543211',
+      passwordHash: `hash:${PASSWORD}`,
+    });
+    const [jane, ghost] = await Promise.all([
+      service.login(request()),
+      service.login(request({ email: 'ghost@example.com' })).catch((e: unknown) => e),
+    ]);
+    expect(jane.token).toBeTruthy();
+    expect(ghost).toMatchObject({ statusCode: 401 });
+  });
+
   it('lets the account in again once the wait is over', async () => {
     let now = NOW.getTime();
     const clocked = new AuthService(
