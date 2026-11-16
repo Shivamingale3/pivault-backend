@@ -199,6 +199,54 @@ describe('POST /api/auth/recovery-key-configured', () => {
   });
 });
 
+describe('recovery key check', () => {
+  const CHECK_PATH = '/api/auth/recovery-key-check';
+  const check = (ciphertext: string) => ({
+    version: 1,
+    algorithm: 'AES-GCM-256',
+    iv: 'AAAAAAAAAAAAAAAA',
+    ciphertext,
+  });
+  const send = (
+    device: ReturnType<typeof createDevice>,
+    token: string,
+    path: string,
+    body: object,
+  ) =>
+    post(path)
+      .set(device.signedWithBody(token, 'POST', path, JSON.stringify(body)))
+      .send(body);
+
+  it('stores the first check, ignores later ones, and returns it to the signed-in device', async () => {
+    const user = await createUser();
+    const { device, token } = await signIn();
+    expect((await send(device, token, CHECK_PATH, {})).body.data).toEqual({ keyCheck: null });
+
+    const first = check('A'.repeat(48));
+    expect((await send(device, token, RECOVERY, { keyCheck: first })).status).toBe(200);
+    expect((await send(device, token, RECOVERY, { keyCheck: check('B'.repeat(48)) })).status).toBe(
+      200,
+    );
+    const res = await send(device, token, CHECK_PATH, {});
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body.data).toEqual({ keyCheck: first });
+    const row = await db.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(row.recoveryKeyCheck).toEqual(first);
+  });
+
+  it('refuses a malformed check, and needs a signed session', async () => {
+    await createUser();
+    const { device, token } = await signIn();
+    expect((await send(device, token, RECOVERY, { keyCheck: { iv: 'x' } })).status).toBe(400);
+    expect((await send(device, token, RECOVERY, { keyCheck: check('A'.repeat(300)) })).status).toBe(
+      400,
+    );
+    expect((await send(device, token, RECOVERY, { extra: 1 })).status).toBe(400);
+    expect((await post(CHECK_PATH)).status).toBe(401);
+  });
+});
+
 describe('POST /api/auth/forgot-password', () => {
   it('emails a reset link; using it sets the password and ends the session', async () => {
     await createUser();

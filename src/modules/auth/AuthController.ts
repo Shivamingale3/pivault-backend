@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { BaseController } from '../../core/http/BaseController.js';
 import { authOf } from '../session/SessionAuthGuard.js';
 import { IP_MAX_LENGTH, USER_AGENT_MAX_LENGTH } from './auth.constants.js';
-import type { ForgotPasswordInput, LoginInput } from './auth.schema.js';
+import type { ForgotPasswordInput, LoginInput, RecoveryKeyConfiguredInput } from './auth.schema.js';
 import type { AuthService } from './AuthService.js';
 import type { ForgotPasswordService } from './ForgotPasswordService.js';
 
@@ -33,9 +33,16 @@ export class AuthController extends BaseController {
     this.ok(res, 'Signed out');
   };
 
-  readonly recoveryKeyConfigured = async (_req: Request, res: Response): Promise<void> => {
-    await this.auth.markRecoveryKeyConfigured(authOf(res).userId);
+  readonly recoveryKeyConfigured = async (req: Request, res: Response): Promise<void> => {
+    const { keyCheck } = req.body as RecoveryKeyConfiguredInput;
+    await this.auth.markRecoveryKeyConfigured(authOf(res).userId, keyCheck);
     this.ok(res, 'Recovery key recorded');
+  };
+
+  /** The encrypted check a new device uses to prove a typed recovery key (null when none yet). */
+  readonly recoveryKeyCheck = async (_req: Request, res: Response): Promise<void> => {
+    const keyCheck = await this.auth.recoveryKeyCheck(authOf(res).userId);
+    this.ok(res, 'Recovery key check', { keyCheck });
   };
 
   readonly requestPasswordReset = async (req: Request, res: Response): Promise<void> => {

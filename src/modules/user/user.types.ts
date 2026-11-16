@@ -40,3 +40,11 @@ export interface CreateUserData {
 
 /** Fields that must be unique across users. */
 export type UniqueUserField = 'email' | 'mobile';
+
+/** An encrypted envelope the server stores and returns without being able to read it. */
+export interface RecoveryKeyCheck {
+  version: number;
+  algorithm: string;
+  iv: string;
+  ciphertext: string;
+}

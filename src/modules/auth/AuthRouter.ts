@@ -2,7 +2,7 @@ import type { RequestHandler, Router } from 'express';
 import { BaseRouter } from '../../core/http/BaseRouter.js';
 import { noStore } from '../../core/middlewares/noStore.js';
 import type { RequestValidator } from '../../core/middlewares/RequestValidator.js';
-import { forgotPasswordSchema, loginSchema } from './auth.schema.js';
+import { forgotPasswordSchema, loginSchema, recoveryKeyConfiguredSchema } from './auth.schema.js';
 import type { AuthController } from './AuthController.js';
 
 export interface AuthGuards {
@@ -35,6 +35,12 @@ export class AuthRouter extends BaseRouter {
       this.controller.requestPasswordReset,
     );
     router.post('/logout', requireSession, this.controller.logout);
-    router.post('/recovery-key-configured', requireSession, this.controller.recoveryKeyConfigured);
+    router.post(
+      '/recovery-key-configured',
+      requireSession,
+      validator.validate(recoveryKeyConfiguredSchema),
+      this.controller.recoveryKeyConfigured,
+    );
+    router.post('/recovery-key-check', requireSession, this.controller.recoveryKeyCheck);
   }
 }
