@@ -4,7 +4,7 @@ import {
   EMAIL_NOT_VERIFIED_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
   LOGIN_ATTEMPTS_PER_ROUND,
-  SESSION_TTL_DAYS,
+  SESSION_NEVER_EXPIRES_AT,
 } from '../../../../src/modules/auth/auth.constants.js';
 import { AuthService } from '../../../../src/modules/auth/AuthService.js';
 import { LoginThrottle } from '../../../../src/modules/auth/LoginThrottle.js';
@@ -76,7 +76,7 @@ describe('AuthService.login', () => {
       lastName: 'Doe',
     });
     expect(result.recoveryKeyConfigured).toBe(false);
-    expect(result.expiresAt.getTime()).toBe(NOW.getTime() + SESSION_TTL_DAYS * 86_400_000);
+    expect(result.expiresAt).toEqual(SESSION_NEVER_EXPIRES_AT);
     const stored = sessionRepo.byUser.get(userId);
     expect(stored?.tokenHash).toBe(sha256Hex(result.token));
     expect(stored?.publicKey).toBe('device-key');

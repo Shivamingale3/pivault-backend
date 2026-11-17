@@ -47,15 +47,4 @@ export class InMemorySessionRepository implements ISessionRepository {
     this.byUser.delete(userId);
     return Promise.resolve(session?.tokenHash ?? null);
   }
-
-  deleteExpired(now: Date): Promise<number> {
-    let removed = 0;
-    for (const [userId, session] of this.byUser) {
-      if (session.expiresAt < now) {
-        this.byUser.delete(userId);
-        removed += 1;
-      }
-    }
-    return Promise.resolve(removed);
-  }
 }

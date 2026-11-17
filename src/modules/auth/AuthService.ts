@@ -11,13 +11,11 @@ import {
   EMAIL_NOT_VERIFIED_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
   SESSION_TOKEN_BYTES,
-  SESSION_TTL_DAYS,
+  SESSION_NEVER_EXPIRES_AT,
 } from './auth.constants.js';
 import { LoginLockedError } from './loginLocked.error.js';
 import type { LoginRequest, LoginResult } from './auth.types.js';
 import type { LoginThrottle } from './LoginThrottle.js';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Account login and logout. Login checks the password, then creates the user's only session
@@ -77,7 +75,7 @@ export class AuthService {
 
     this.throttle.reset(email);
     const token = randomBytes(SESSION_TOKEN_BYTES).toString('base64url');
-    const expiresAt = new Date(this.now().getTime() + SESSION_TTL_DAYS * DAY_MS);
+    const expiresAt = SESSION_NEVER_EXPIRES_AT;
     await this.sessions.replace({
       userId: user.id,
       tokenHash: sha256Hex(token),

@@ -18,7 +18,7 @@ const newSession = (userId: string, tokenHash: string, ttlMs = 30 * 24 * HOUR_MS
 beforeEach(() => {
   clock = Date.parse('2026-11-09T12:00:00Z');
   repo = new InMemorySessionRepository();
-  store = new SessionStore(repo, () => new Date(clock));
+  store = new SessionStore(repo);
 });
 
 describe('SessionStore', () => {
@@ -43,11 +43,10 @@ describe('SessionStore', () => {
     expect(repo.byUser.size).toBe(1);
   });
 
-  it('rejects and removes expired sessions', async () => {
-    await store.replace(newSession(ulid(), '1'.repeat(64), 2 * HOUR_MS));
-    clock += 3 * HOUR_MS;
-    expect(await store.findActive('1'.repeat(64))).toBeNull();
-    expect(repo.byUser.size).toBe(0);
+  it('never ends a session by the clock, even one stored with a past expiry', async () => {
+    await store.replace(newSession(ulid(), '1'.repeat(64), -2 * HOUR_MS));
+    expect(await store.findActive('1'.repeat(64))).not.toBeNull();
+    expect(repo.byUser.size).toBe(1);
   });
 
   it('revokes the session of a user, and is a no-op when there is none', async () => {
