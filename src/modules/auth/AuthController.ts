@@ -7,6 +7,7 @@ import type {
   ForgotPasswordInput,
   LoginInput,
   RecoveryKeyConfiguredInput,
+  ReplaceRecoveryKeyCheckInput,
 } from './auth.schema.js';
 import type { AuthService } from './AuthService.js';
 import type { ForgotPasswordService } from './ForgotPasswordService.js';
@@ -42,6 +43,12 @@ export class AuthController extends BaseController {
     const { keyCheck } = req.body as RecoveryKeyConfiguredInput;
     await this.auth.markRecoveryKeyConfigured(authOf(res).userId, keyCheck);
     this.ok(res, 'Recovery key recorded');
+  };
+
+  readonly replaceRecoveryKeyCheck = async (req: Request, res: Response): Promise<void> => {
+    const { keyCheck } = req.body as ReplaceRecoveryKeyCheckInput;
+    await this.auth.replaceRecoveryKeyCheck(authOf(res).userId, keyCheck);
+    this.ok(res, 'Recovery key replaced');
   };
 
   /** The encrypted check a new device uses to prove a typed recovery key (null when none yet). */

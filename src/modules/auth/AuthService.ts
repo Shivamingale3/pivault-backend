@@ -137,6 +137,17 @@ export class AuthService {
     this.logger.info(`User ${userId} configured a recovery key.`);
   }
 
+  /**
+   * The user made a new recovery key and re-encrypted the vault with it: the old key's check is
+   * replaced, so a new phone accepts only the new key. The check stays opaque to the server.
+   */
+  async replaceRecoveryKeyCheck(userId: string, keyCheck: RecoveryKeyCheck): Promise<void> {
+    if (!(await this.users.replaceRecoveryKeyCheck(userId, keyCheck))) {
+      throw new UnauthorizedError(NOT_SIGNED_IN_MESSAGE);
+    }
+    this.logger.info(`User ${userId} replaced their recovery key.`);
+  }
+
   /** The stored recovery-key check, or null when this account has none yet. */
   recoveryKeyCheck(userId: string): Promise<RecoveryKeyCheck | null> {
     return this.users.findRecoveryKeyCheck(userId);

@@ -248,6 +248,29 @@ describe('AuthService.changePassword', () => {
   });
 });
 
+describe('AuthService.replaceRecoveryKeyCheck', () => {
+  const check = (ciphertext: string) => ({
+    version: 1,
+    algorithm: 'AES-GCM-256',
+    iv: 'AAAAAAAAAAAAAAAA',
+    ciphertext,
+  });
+
+  it('overwrites the first check, which a plain configure would keep', async () => {
+    await service.markRecoveryKeyConfigured(userId, check('A'.repeat(48)));
+    await service.replaceRecoveryKeyCheck(userId, check('B'.repeat(48)));
+    expect(await service.recoveryKeyCheck(userId)).toEqual(check('B'.repeat(48)));
+  });
+
+  it('is refused for a user that no longer exists', async () => {
+    await expect(
+      service.replaceRecoveryKeyCheck('missing', check('B'.repeat(48))),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+});
+
 describe('AuthService.logout', () => {
   it('removes the session', async () => {
     await service.login(request());
