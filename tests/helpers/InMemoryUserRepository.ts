@@ -76,6 +76,12 @@ export class InMemoryUserRepository implements IUserRepository {
     return Promise.resolve();
   }
 
+  replaceRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<boolean> {
+    if (!this.rows.has(id)) return Promise.resolve(false);
+    this.keyChecks.set(id, check);
+    return Promise.resolve(true);
+  }
+
   findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null> {
     return Promise.resolve(this.keyChecks.get(id) ?? null);
   }

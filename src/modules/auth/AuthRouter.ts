@@ -7,6 +7,7 @@ import {
   forgotPasswordSchema,
   loginSchema,
   recoveryKeyConfiguredSchema,
+  replaceRecoveryKeyCheckSchema,
 } from './auth.schema.js';
 import type { AuthController } from './AuthController.js';
 
@@ -61,5 +62,11 @@ export class AuthRouter extends BaseRouter {
       this.controller.changePassword,
     );
     router.post('/recovery-key-check', requireSession, this.controller.recoveryKeyCheck);
+    router.post(
+      '/recovery-key-check/replace',
+      requireSession,
+      validator.validate(replaceRecoveryKeyCheckSchema),
+      this.controller.replaceRecoveryKeyCheck,
+    );
   }
 }

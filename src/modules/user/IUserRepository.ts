@@ -22,6 +22,8 @@ export interface IUserRepository {
   markRecoveryKeyConfigured(id: string, at: Date): Promise<boolean>;
   /** Keeps the first check ever stored (a later one is ignored). No-op for an unknown user. */
   saveRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<void>;
+  /** Overwrites the check (a new recovery key replaced the old one). Returns false for an unknown user. */
+  replaceRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<boolean>;
   /** The stored check, or null when there is none (or no such user). */
   findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null>;
   /** Removes the user (sessions and reset tokens cascade). Returns false when the user doesn't exist. */

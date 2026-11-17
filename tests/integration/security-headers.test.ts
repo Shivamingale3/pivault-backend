@@ -86,15 +86,18 @@ describe('security headers on every response path', () => {
     expectSecurityHeaders(res.headers);
   });
 
-  it.each(['logout', 'recovery-key-configured', 'recovery-key-check', 'change-password'])(
-    'signed-session route without credentials: %s (401)',
-    async (action) => {
-      const res = await request(app).post(`/api/auth/${action}`);
-      expect(res.status).toBe(401);
-      expect(res.headers['cache-control']).toBe('no-store');
-      expectSecurityHeaders(res.headers);
-    },
-  );
+  it.each([
+    'logout',
+    'recovery-key-configured',
+    'recovery-key-check',
+    'recovery-key-check/replace',
+    'change-password',
+  ])('signed-session route without credentials: %s (401)', async (action) => {
+    const res = await request(app).post(`/api/auth/${action}`);
+    expect(res.status).toBe(401);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expectSecurityHeaders(res.headers);
+  });
 
   it.each(['pull', 'push'])('vault sync route without credentials: %s (401)', async (action) => {
     const res = await request(app).post(`/api/vault/${action}`).send({});

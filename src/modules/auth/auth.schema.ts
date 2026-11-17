@@ -37,6 +37,12 @@ export const recoveryKeyConfiguredSchema = z.preprocess(
   z.object({ keyCheck: recoveryKeyCheckSchema.optional() }).strict(),
 );
 
+/** A new recovery key's check, replacing the old one. */
+export const replaceRecoveryKeyCheckSchema = z
+  .object({ keyCheck: recoveryKeyCheckSchema })
+  .strict();
+export type ReplaceRecoveryKeyCheckInput = z.output<typeof replaceRecoveryKeyCheckSchema>;
+
 export type RecoveryKeyConfiguredInput = z.output<typeof recoveryKeyConfiguredSchema>;
 /** The current password is only bounded (a wrong one must look like any wrong one); the new one follows the policy. */
 export const changePasswordSchema = z

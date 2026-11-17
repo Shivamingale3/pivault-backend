@@ -86,6 +86,14 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
+  async replaceRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<boolean> {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id },
+      data: { recoveryKeyCheck: { ...check } },
+    });
+    return count > 0;
+  }
+
   async findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null> {
     const row = await this.prisma.user.findUnique({
       where: { id },

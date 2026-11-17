@@ -284,6 +284,21 @@ describe('recovery key check', () => {
     expect(row.recoveryKeyCheck).toEqual(first);
   });
 
+  it('replaces the check when a new recovery key is made, and only with a valid one', async () => {
+    await createUser();
+    const { device, token } = await signIn();
+    await send(device, token, RECOVERY, { keyCheck: check('A'.repeat(48)) });
+    const REPLACE = '/api/auth/recovery-key-check/replace';
+    const next = check('C'.repeat(48));
+    const res = await send(device, token, REPLACE, { keyCheck: next });
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect((await send(device, token, CHECK_PATH, {})).body.data).toEqual({ keyCheck: next });
+    expect((await send(device, token, REPLACE, { keyCheck: { iv: 'x' } })).status).toBe(400);
+    expect((await send(device, token, REPLACE, {})).status).toBe(400);
+    expect((await post(REPLACE).send({ keyCheck: next })).status).toBe(401);
+  });
+
   it('refuses a malformed check, and needs a signed session', async () => {
     await createUser();
     const { device, token } = await signIn();
