@@ -24,6 +24,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export class AuthService {
   private dummyHash: Promise<string> | null = null;
+  /** The last queued login per account (see `login`). Entries remove themselves when done. */
+  private readonly inFlight = new Map<string, Promise<void>>();
 
   constructor(
     private readonly users: IUserRepository,
@@ -34,7 +36,26 @@ export class AuthService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async login(request: LoginRequest): Promise<LoginResult> {
+  /**
+   * Logins for one account run one at a time. Without this, a burst of parallel guesses would all
+   * pass the lockout check before any of them was counted, and get far more than five tries a round.
+   */
+  login(request: LoginRequest): Promise<LoginResult> {
+    const { email } = request;
+    const previous = this.inFlight.get(email) ?? Promise.resolve();
+    const run = previous.then(() => this.attemptLogin(request));
+    const tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.inFlight.set(email, tail);
+    void tail.then(() => {
+      if (this.inFlight.get(email) === tail) this.inFlight.delete(email);
+    });
+    return run;
+  }
+
+  private async attemptLogin(request: LoginRequest): Promise<LoginResult> {
     const { email, password } = request;
     const locked = this.throttle.lockout(email);
     if (locked) throw new LoginLockedError(locked);
