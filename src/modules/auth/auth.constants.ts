@@ -2,6 +2,7 @@
 export const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
 export const EMAIL_NOT_VERIFIED_MESSAGE =
   'Open the link we emailed you to set your password before signing in';
+export const WRONG_CURRENT_PASSWORD_MESSAGE = 'Current password is incorrect';
 export const ACCOUNT_NOT_FOUND_MESSAGE = 'No account found for that email';
 export const TOO_MANY_LOGINS_MESSAGE = 'Too many failed sign-in attempts. Try again later.';
 

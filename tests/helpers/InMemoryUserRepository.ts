@@ -25,6 +25,19 @@ export class InMemoryUserRepository implements IUserRepository {
     return Promise.resolve(row ? { ...row } : null);
   }
 
+  findAuthById(id: string): Promise<UserWithPasswordHash | null> {
+    const row = this.rows.get(id);
+    return Promise.resolve(row ? { ...row } : null);
+  }
+
+  updatePassword(id: string, passwordHash: string, at: Date): Promise<boolean> {
+    const row = this.rows.get(id);
+    if (!row) return Promise.resolve(false);
+    row.passwordHash = passwordHash;
+    row.passwordChangedAt = at;
+    return Promise.resolve(true);
+  }
+
   async create(data: CreateUserData): Promise<User> {
     for (const row of this.rows.values()) {
       if (row.email === data.email) throw new UserConflictError('email');

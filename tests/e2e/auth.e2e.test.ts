@@ -199,6 +199,55 @@ describe('POST /api/auth/recovery-key-configured', () => {
   });
 });
 
+describe('POST /api/auth/change-password', () => {
+  const CHANGE = '/api/auth/change-password';
+  const change = (device: ReturnType<typeof createDevice>, token: string, body: object) =>
+    post(CHANGE)
+      .set(device.signedWithBody(token, 'POST', CHANGE, JSON.stringify(body)))
+      .send(body);
+
+  it('sets the new password, keeps this session, and the old password stops working', async () => {
+    const user = await createUser();
+    const { device, token } = await signIn();
+    const res = await change(device, token, {
+      currentPassword: PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    const row = await db.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(row.passwordChangedAt).not.toBeNull();
+    expect(row.passwordHash).not.toContain(NEW_PASSWORD);
+
+    // Still signed in on this device.
+    expect(
+      (await change(device, token, { currentPassword: NEW_PASSWORD, newPassword: PASSWORD }))
+        .status,
+    ).toBe(200);
+    await change(device, token, { currentPassword: PASSWORD, newPassword: NEW_PASSWORD });
+    expect((await signIn(createDevice(), PASSWORD)).res.status).toBe(401);
+    expect((await signIn(createDevice(), NEW_PASSWORD)).res.status).toBe(200);
+  });
+
+  it('refuses a wrong current password, a weak new one, and unsigned calls; nothing changes', async () => {
+    await createUser();
+    const { device, token } = await signIn();
+    const wrong = await change(device, token, {
+      currentPassword: WRONG_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.message).toBe('Current password is incorrect');
+    expect(
+      (await change(device, token, { currentPassword: PASSWORD, newPassword: 'short' })).status,
+    ).toBe(400);
+    expect(
+      (await post(CHANGE).send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })).status,
+    ).toBe(401);
+    expect((await signIn(createDevice(), PASSWORD)).res.status).toBe(200);
+  });
+});
+
 describe('recovery key check', () => {
   const CHECK_PATH = '/api/auth/recovery-key-check';
   const check = (ciphertext: string) => ({

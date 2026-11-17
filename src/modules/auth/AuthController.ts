@@ -2,7 +2,12 @@ import type { Request, Response } from 'express';
 import { BaseController } from '../../core/http/BaseController.js';
 import { authOf } from '../session/SessionAuthGuard.js';
 import { IP_MAX_LENGTH, USER_AGENT_MAX_LENGTH } from './auth.constants.js';
-import type { ForgotPasswordInput, LoginInput, RecoveryKeyConfiguredInput } from './auth.schema.js';
+import type {
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  LoginInput,
+  RecoveryKeyConfiguredInput,
+} from './auth.schema.js';
 import type { AuthService } from './AuthService.js';
 import type { ForgotPasswordService } from './ForgotPasswordService.js';
 
@@ -43,6 +48,13 @@ export class AuthController extends BaseController {
   readonly recoveryKeyCheck = async (_req: Request, res: Response): Promise<void> => {
     const keyCheck = await this.auth.recoveryKeyCheck(authOf(res).userId);
     this.ok(res, 'Recovery key check', { keyCheck });
+  };
+
+  /** Body was already validated by the router's validator. Passwords are never logged. */
+  readonly changePassword = async (req: Request, res: Response): Promise<void> => {
+    const { currentPassword, newPassword } = req.body as ChangePasswordInput;
+    await this.auth.changePassword(authOf(res).userId, currentPassword, newPassword);
+    this.ok(res, 'Password changed');
   };
 
   readonly requestPasswordReset = async (req: Request, res: Response): Promise<void> => {

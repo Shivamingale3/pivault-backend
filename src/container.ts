@@ -140,6 +140,7 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
     createAuthModule(authService, forgotPasswordService, {
       loginLimiter: rateLimiterFactory.create('LOGIN'),
       forgotPasswordLimiter: rateLimiterFactory.create('FORGOT_PASSWORD'),
+      changePasswordLimiter: rateLimiterFactory.create('CHANGE_PASSWORD'),
       requireSession,
       validator: requestValidator,
     }),

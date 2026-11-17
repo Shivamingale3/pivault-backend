@@ -37,6 +37,11 @@ export const RATE_LIMITS = {
     windowMs: ONE_MINUTE_MS,
     maxRequests: 10,
   },
+  /** Signed change-password: one argon2 verify and one hash per call. */
+  CHANGE_PASSWORD: {
+    windowMs: ONE_MINUTE_MS,
+    maxRequests: 5,
+  },
   /** Public forgot-password: every call can send an email. */
   FORGOT_PASSWORD: {
     windowMs: ONE_MINUTE_MS,
