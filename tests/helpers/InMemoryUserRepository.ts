@@ -3,6 +3,7 @@ import type { IUserRepository } from '../../src/modules/user/IUserRepository.js'
 import { UserConflictError } from '../../src/modules/user/user.errors.js';
 import type {
   CreateUserData,
+  RecoveryKeyCheck,
   User,
   UserWithPasswordHash,
 } from '../../src/modules/user/user.types.js';
@@ -53,6 +54,17 @@ export class InMemoryUserRepository implements IUserRepository {
     if (!row) return Promise.resolve(false);
     row.recoveryKeyConfiguredAt ??= at;
     return Promise.resolve(true);
+  }
+
+  readonly keyChecks = new Map<string, RecoveryKeyCheck>();
+
+  saveRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<void> {
+    if (this.rows.has(id) && !this.keyChecks.has(id)) this.keyChecks.set(id, check);
+    return Promise.resolve();
+  }
+
+  findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null> {
+    return Promise.resolve(this.keyChecks.get(id) ?? null);
   }
 
   private byEmail(email: string): UserWithPasswordHash | undefined {

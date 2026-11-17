@@ -128,7 +128,8 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
   );
   const vaultService = new VaultService(new PrismaVaultRepository(database.client), logger);
   const requestValidator = new RequestValidator();
-  const requireSession = new SessionAuthGuard(sessionStore).handle;
+  const sessionGuard = new SessionAuthGuard(sessionStore);
+  const { requireSession } = sessionGuard;
   const modules = [
     createHealthModule(() => resources.pingAll()),
     createRegisterModule(registerService, {
@@ -142,7 +143,7 @@ export function createContainer(overrides: ContainerOverrides = {}): Container {
       requireSession,
       validator: requestValidator,
     }),
-    createVaultModule(vaultService, { requireSession, validator: requestValidator }),
+    createVaultModule(vaultService, { session: sessionGuard, validator: requestValidator }),
     createPasswordLinkModule(passwordLinkService, {
       validateLimiter: rateLimiterFactory.create('PASSWORD_LINK_VALIDATE'),
       completeLimiter: rateLimiterFactory.create('PASSWORD_LINK_COMPLETE'),

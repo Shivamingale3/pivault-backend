@@ -1,4 +1,4 @@
-import type { CreateUserData, User, UserWithPasswordHash } from './user.types.js';
+import type { CreateUserData, RecoveryKeyCheck, User, UserWithPasswordHash } from './user.types.js';
 
 /**
  * Persistence contract for users (Repository pattern). The service depends on
@@ -16,6 +16,10 @@ export interface IUserRepository {
   create(data: CreateUserData): Promise<User>;
   /** Idempotent: keeps the first timestamp. Returns false when the user doesn't exist. */
   markRecoveryKeyConfigured(id: string, at: Date): Promise<boolean>;
+  /** Keeps the first check ever stored (a later one is ignored). No-op for an unknown user. */
+  saveRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<void>;
+  /** The stored check, or null when there is none (or no such user). */
+  findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null>;
   /** Removes the user (sessions and reset tokens cascade). Returns false when the user doesn't exist. */
   delete(id: string): Promise<boolean>;
 }

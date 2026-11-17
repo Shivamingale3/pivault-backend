@@ -6,6 +6,7 @@ import type { ILogger } from '../../core/logger/ILogger.js';
 import { NOT_SIGNED_IN_MESSAGE } from '../session/session.constants.js';
 import type { SessionStore } from '../session/SessionStore.js';
 import type { IUserRepository } from '../user/IUserRepository.js';
+import type { RecoveryKeyCheck } from '../user/user.types.js';
 import {
   EMAIL_NOT_VERIFIED_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
@@ -95,11 +96,21 @@ export class AuthService {
     };
   }
 
-  /** The device generated its recovery key. Idempotent; the key itself never reaches the server. */
-  async markRecoveryKeyConfigured(userId: string): Promise<void> {
+  /**
+   * The device generated its recovery key. Idempotent; the key itself never reaches the server.
+   * `keyCheck` (a fixed text encrypted with the vault key) is kept the first time one arrives, so
+   * a new device can later prove a typed key is right.
+   */
+  async markRecoveryKeyConfigured(userId: string, keyCheck?: RecoveryKeyCheck): Promise<void> {
     const found = await this.users.markRecoveryKeyConfigured(userId, this.now());
     if (!found) throw new UnauthorizedError(NOT_SIGNED_IN_MESSAGE);
+    if (keyCheck) await this.users.saveRecoveryKeyCheck(userId, keyCheck);
     this.logger.info(`User ${userId} configured a recovery key.`);
+  }
+
+  /** The stored recovery-key check, or null when this account has none yet. */
+  recoveryKeyCheck(userId: string): Promise<RecoveryKeyCheck | null> {
+    return this.users.findRecoveryKeyCheck(userId);
   }
 
   async logout(userId: string): Promise<void> {

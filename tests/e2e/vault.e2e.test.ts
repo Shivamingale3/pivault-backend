@@ -26,6 +26,10 @@ let passwordHash: string;
 
 interface Session {
   call: (path: string, body: unknown, ip?: string) => request.Test;
+  /** Signs `signed` but sends `sent`: what someone in the middle would do. */
+  swap: (path: string, signed: unknown, sent: unknown) => request.Test;
+  /** Signed the old way, without the body. */
+  legacy: (path: string, body: unknown) => request.Test;
   token: string;
 }
 
@@ -53,6 +57,18 @@ async function signIn(email: string, mobile: string): Promise<Session> {
       request(container.app)
         .post(path)
         .set('X-Forwarded-For', ip)
+        .set(device.signedWithBody(token, 'POST', path, JSON.stringify(body)))
+        .send(body as object),
+    swap: (path, signed, sent) =>
+      request(container.app)
+        .post(path)
+        .set('X-Forwarded-For', nextIp())
+        .set(device.signedWithBody(token, 'POST', path, JSON.stringify(signed)))
+        .send(sent as object),
+    legacy: (path, body) =>
+      request(container.app)
+        .post(path)
+        .set('X-Forwarded-For', nextIp())
         .set(device.signedHeaders(token, 'POST', path))
         .send(body as object),
   };
@@ -103,6 +119,25 @@ describe('authentication', () => {
       .set('X-Forwarded-For', nextIp())
       .send({ email: 'jane@example.com', password: PASSWORD, publicKey: createDevice().publicKey });
     expect((await jane.call(PULL, { checkpoint: null })).status).toBe(401);
+  });
+
+  it('refuses a request whose body is not the one that was signed, and changes nothing', async () => {
+    const mine = fakeState();
+    const theirs = fakeState();
+    const swapped = await jane.swap(
+      PUSH,
+      { rows: [insertRow(mine)] },
+      { rows: [insertRow(theirs)] },
+    );
+    expect(swapped.status).toBe(401);
+    const emptied = await jane.swap(PUSH, { rows: [insertRow(mine)] }, { rows: [] });
+    expect(emptied.status).toBe(401);
+    const after = await jane.call(PULL, { checkpoint: null });
+    expect(after.body.data.documents).toEqual([]);
+  });
+
+  it('still accepts an older app that signs without the body (until every app has updated)', async () => {
+    expect((await jane.legacy(PULL, { checkpoint: null })).status).toBe(200);
   });
 
   it('answers with no-store and the security headers', async () => {

@@ -1,8 +1,9 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { uniqueViolationFields } from '../../core/database/prismaErrors.js';
 import type { IUserRepository } from './IUserRepository.js';
 import { UserConflictError } from './user.errors.js';
-import type { CreateUserData, User, UserWithPasswordHash } from './user.types.js';
+import { recoveryKeyCheckSchema } from './recoveryKeyCheck.schema.js';
+import type { CreateUserData, RecoveryKeyCheck, User, UserWithPasswordHash } from './user.types.js';
 
 /** Only public fields leave the repository by default (no password hash). */
 const USER_SELECT = {
@@ -61,5 +62,21 @@ export class PrismaUserRepository implements IUserRepository {
     });
     if (count > 0) return true;
     return (await this.prisma.user.count({ where: { id } })) > 0;
+  }
+
+  async saveRecoveryKeyCheck(id: string, check: RecoveryKeyCheck): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id, recoveryKeyCheck: { equals: Prisma.DbNull } },
+      data: { recoveryKeyCheck: { ...check } },
+    });
+  }
+
+  async findRecoveryKeyCheck(id: string): Promise<RecoveryKeyCheck | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id },
+      select: { recoveryKeyCheck: true },
+    });
+    const parsed = recoveryKeyCheckSchema.safeParse(row?.recoveryKeyCheck);
+    return parsed.success ? parsed.data : null;
   }
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EMAIL_MAX_LENGTH } from '../register/register.constants.js';
+import { recoveryKeyCheckSchema } from '../user/recoveryKeyCheck.schema.js';
 import { parseDevicePublicKey } from './devicePublicKey.js';
 
 const email = z
@@ -26,5 +27,15 @@ export const loginSchema = z
 
 export const forgotPasswordSchema = z.object({ email }).strict();
 
+/**
+ * The device may send its recovery-key check along. Older apps send no body at all, which is
+ * read as "no check".
+ */
+export const recoveryKeyConfiguredSchema = z.preprocess(
+  (value) => value ?? {},
+  z.object({ keyCheck: recoveryKeyCheckSchema.optional() }).strict(),
+);
+
+export type RecoveryKeyConfiguredInput = z.output<typeof recoveryKeyConfiguredSchema>;
 export type LoginInput = z.output<typeof loginSchema>;
 export type ForgotPasswordInput = z.output<typeof forgotPasswordSchema>;
