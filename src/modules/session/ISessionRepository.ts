@@ -10,6 +10,4 @@ export interface ISessionRepository {
   touch(id: string, at: Date): Promise<void>;
   /** Returns the removed session's token hash, or null if there was none. */
   deleteByUserId(userId: string): Promise<string | null>;
-  /** Removes sessions that expired before `now`; returns how many. */
-  deleteExpired(now: Date): Promise<number>;
 }

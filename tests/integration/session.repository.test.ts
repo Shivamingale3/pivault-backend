@@ -61,14 +61,6 @@ describe('PrismaSessionRepository', () => {
     expect(await sessions.deleteByUserId(user.id)).toBeNull();
   });
 
-  it('deleteExpired removes only expired sessions', async () => {
-    const [live, dead] = await Promise.all([users.create(userData()), users.create(userData())]);
-    await sessions.replaceForUser(sessionFor(live.id, 'e'.repeat(64)));
-    await sessions.replaceForUser(sessionFor(dead.id, 'f'.repeat(64), new Date(Date.now() - 1000)));
-    expect(await sessions.deleteExpired(new Date())).toBe(1);
-    expect(await sessions.findByTokenHash('e'.repeat(64))).not.toBeNull();
-  });
-
   it('touch() updates lastSeenAt', async () => {
     const user = await users.create(userData());
     const { session } = await sessions.replaceForUser(sessionFor(user.id, '1'.repeat(64)));

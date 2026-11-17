@@ -3,13 +3,10 @@ import type { CreateSessionData, Session } from './session.types.js';
 
 /**
  * Sessions live in Postgres only, so a session replaced or revoked elsewhere
- * is rejected on its very next request.
+ * is rejected on its very next request. They are never ended by the clock.
  */
 export class SessionStore {
-  constructor(
-    private readonly sessions: ISessionRepository,
-    private readonly now: () => Date = () => new Date(),
-  ) {}
+  constructor(private readonly sessions: ISessionRepository) {}
 
   /** Creates the user's only session, replacing the previous one. */
   async replace(data: CreateSessionData): Promise<Session> {
@@ -17,15 +14,13 @@ export class SessionStore {
     return session;
   }
 
-  /** Returns a live (unexpired) session for the token hash, or null. */
-  async findActive(tokenHash: string): Promise<Session | null> {
-    const session = await this.sessions.findByTokenHash(tokenHash);
-    if (!session) return null;
-    if (session.expiresAt <= this.now()) {
-      await this.sessions.deleteByUserId(session.userId);
-      return null;
-    }
-    return session;
+  /**
+   * The session for the token hash, or null. Sessions never expire by time (see
+   * `SESSION_NEVER_EXPIRES_AT`): `expiresAt` is deliberately not checked, so sessions created
+   * before that rule keep working too.
+   */
+  findActive(tokenHash: string): Promise<Session | null> {
+    return this.sessions.findByTokenHash(tokenHash);
   }
 
   async revokeForUser(userId: string): Promise<void> {

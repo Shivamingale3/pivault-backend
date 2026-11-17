@@ -29,7 +29,7 @@ beforeEach(async () => {
     publicKey: device.publicKey,
     expiresAt: new Date(NOW + 86_400_000),
   });
-  guard = new SessionAuthGuard(new SessionStore(repo, () => new Date(NOW)), () => NOW);
+  guard = new SessionAuthGuard(new SessionStore(repo), () => NOW);
 });
 
 /** Runs the guard with the given headers and resolves with what it did. */
@@ -120,16 +120,15 @@ describe('SessionAuthGuard', () => {
     expect(edge.outcome).toBe('ok');
   });
 
-  it('rejects an expired session', async () => {
+  it('accepts a session whose stored expiry has passed: sessions never expire', async () => {
     await repo.replaceForUser({
       userId: 'user-1',
       tokenHash: sha256Hex(TOKEN),
       publicKey: device.publicKey,
       expiresAt: new Date(NOW - 1),
     });
-    expect(await denied(device.signedHeaders(TOKEN, 'POST', PATH, NOW))).toMatchObject(
-      UNAUTHORIZED,
-    );
+    const { outcome } = await run(device.signedHeaders(TOKEN, 'POST', PATH, NOW));
+    expect(outcome).toBe('ok');
   });
 
   describe('signed bodies', () => {
@@ -170,7 +169,7 @@ describe('SessionAuthGuard', () => {
     });
 
     it('rejects a signature without the body once older apps are no longer accepted', async () => {
-      guard = new SessionAuthGuard(new SessionStore(repo, () => new Date(NOW)), () => NOW, false);
+      guard = new SessionAuthGuard(new SessionStore(repo), () => NOW, false);
       expect(await denied(device.signedHeaders(TOKEN, 'POST', PATH, NOW))).toMatchObject(
         UNAUTHORIZED,
       );
