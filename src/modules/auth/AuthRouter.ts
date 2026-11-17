@@ -2,12 +2,18 @@ import type { RequestHandler, Router } from 'express';
 import { BaseRouter } from '../../core/http/BaseRouter.js';
 import { noStore } from '../../core/middlewares/noStore.js';
 import type { RequestValidator } from '../../core/middlewares/RequestValidator.js';
-import { forgotPasswordSchema, loginSchema, recoveryKeyConfiguredSchema } from './auth.schema.js';
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  recoveryKeyConfiguredSchema,
+} from './auth.schema.js';
 import type { AuthController } from './AuthController.js';
 
 export interface AuthGuards {
   loginLimiter: RequestHandler;
   forgotPasswordLimiter: RequestHandler;
+  changePasswordLimiter: RequestHandler;
   /** Requires a signed request (signature and body) from the session's device (see `SessionAuthGuard`). */
   requireSession: RequestHandler[];
   validator: RequestValidator;
@@ -25,7 +31,13 @@ export class AuthRouter extends BaseRouter {
   }
 
   protected registerRoutes(router: Router): void {
-    const { loginLimiter, forgotPasswordLimiter, requireSession, validator } = this.guards;
+    const {
+      loginLimiter,
+      forgotPasswordLimiter,
+      changePasswordLimiter,
+      requireSession,
+      validator,
+    } = this.guards;
     router.use(noStore);
     router.post('/login', loginLimiter, validator.validate(loginSchema), this.controller.login);
     router.post(
@@ -40,6 +52,13 @@ export class AuthRouter extends BaseRouter {
       requireSession,
       validator.validate(recoveryKeyConfiguredSchema),
       this.controller.recoveryKeyConfigured,
+    );
+    router.post(
+      '/change-password',
+      changePasswordLimiter,
+      requireSession,
+      validator.validate(changePasswordSchema),
+      this.controller.changePassword,
     );
     router.post('/recovery-key-check', requireSession, this.controller.recoveryKeyCheck);
   }

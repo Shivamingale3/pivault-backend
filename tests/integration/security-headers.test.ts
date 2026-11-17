@@ -86,7 +86,7 @@ describe('security headers on every response path', () => {
     expectSecurityHeaders(res.headers);
   });
 
-  it.each(['logout', 'recovery-key-configured', 'recovery-key-check'])(
+  it.each(['logout', 'recovery-key-configured', 'recovery-key-check', 'change-password'])(
     'signed-session route without credentials: %s (401)',
     async (action) => {
       const res = await request(app).post(`/api/auth/${action}`);

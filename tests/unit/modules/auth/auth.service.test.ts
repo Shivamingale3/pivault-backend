@@ -209,6 +209,45 @@ describe('AuthService.login', () => {
   });
 });
 
+describe('AuthService.changePassword', () => {
+  const NEXT = fakePassword();
+
+  it('stores the new hash after checking the current password', async () => {
+    await service.changePassword(userId, PASSWORD, NEXT);
+    expect(users.rows.get(userId)?.passwordHash).toBe(`hash:${NEXT}`);
+    expect(users.rows.get(userId)?.passwordChangedAt).toEqual(NOW);
+  });
+
+  it('refuses a wrong current password and changes nothing', async () => {
+    await expect(service.changePassword(userId, WRONG_PASSWORD, NEXT)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    expect(users.rows.get(userId)?.passwordHash).toBe(`hash:${PASSWORD}`);
+    expect(hasher.hash).not.toHaveBeenCalled();
+  });
+
+  it('shares the lockout with login: five wrong tries lock the account, even for the right one', async () => {
+    for (let i = 0; i < LOGIN_ATTEMPTS_PER_ROUND - 1; i += 1) {
+      await expect(service.changePassword(userId, WRONG_PASSWORD, NEXT)).rejects.toMatchObject({
+        statusCode: 400,
+      });
+    }
+    await expect(service.changePassword(userId, WRONG_PASSWORD, NEXT)).rejects.toMatchObject({
+      statusCode: 429,
+    });
+    await expect(service.changePassword(userId, PASSWORD, NEXT)).rejects.toMatchObject({
+      statusCode: 429,
+    });
+    expect(users.rows.get(userId)?.passwordHash).toBe(`hash:${PASSWORD}`);
+  });
+
+  it('is refused for a user that no longer exists', async () => {
+    await expect(service.changePassword('missing', PASSWORD, NEXT)).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+});
+
 describe('AuthService.logout', () => {
   it('removes the session', async () => {
     await service.login(request());

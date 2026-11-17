@@ -38,6 +38,21 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
+  findAuthById(id: string): Promise<UserWithPasswordHash | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: { ...USER_SELECT, passwordHash: true },
+    });
+  }
+
+  async updatePassword(id: string, passwordHash: string, at: Date): Promise<boolean> {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id },
+      data: { passwordHash, passwordChangedAt: at },
+    });
+    return count > 0;
+  }
+
   /** Uniqueness is enforced by the DB constraints — no racy check-then-insert. */
   async create(data: CreateUserData): Promise<User> {
     try {

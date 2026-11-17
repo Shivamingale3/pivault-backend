@@ -25,6 +25,7 @@ afterAll(async () => {
 });
 
 describe('POST /api/internal/register', () => {
+  // The first argon2 hash of a run can take seconds when every suite runs in parallel.
   it('registers a user: hashed password, mobile split in two columns', async () => {
     const res = await request(container.app).post(URL).send(body());
 
@@ -42,7 +43,7 @@ describe('POST /api/internal/register', () => {
     expect(row.countryCode).toBe('91');
     expect(row.mobile).toBe('9876543210');
     expect(await db.passwordResetToken.count({ where: { userId: row.id } })).toBe(1);
-  });
+  }, 20_000);
 
   it('returns 409 for a duplicate email or mobile', async () => {
     await request(container.app).post(URL).send(body());

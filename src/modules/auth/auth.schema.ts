@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EMAIL_MAX_LENGTH } from '../register/register.constants.js';
+import { passwordSchema } from '../user/password.schema.js';
 import { recoveryKeyCheckSchema } from '../user/recoveryKeyCheck.schema.js';
 import { parseDevicePublicKey } from './devicePublicKey.js';
 
@@ -37,5 +38,17 @@ export const recoveryKeyConfiguredSchema = z.preprocess(
 );
 
 export type RecoveryKeyConfiguredInput = z.output<typeof recoveryKeyConfiguredSchema>;
+/** The current password is only bounded (a wrong one must look like any wrong one); the new one follows the policy. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ error: 'Current password is required' })
+      .min(1, 'Current password is required')
+      .max(128),
+    newPassword: passwordSchema,
+  })
+  .strict();
+
+export type ChangePasswordInput = z.output<typeof changePasswordSchema>;
 export type LoginInput = z.output<typeof loginSchema>;
 export type ForgotPasswordInput = z.output<typeof forgotPasswordSchema>;

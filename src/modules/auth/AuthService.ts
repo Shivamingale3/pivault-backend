@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import type { IPasswordHasher } from '../../core/crypto/IPasswordHasher.js';
 import { sha256Hex } from '../../core/crypto/hash.js';
-import { ForbiddenError, UnauthorizedError } from '../../core/errors/HttpErrors.js';
+import {
+  BadRequestError,
+  ForbiddenError,
+  UnauthorizedError,
+} from '../../core/errors/HttpErrors.js';
 import type { ILogger } from '../../core/logger/ILogger.js';
 import { NOT_SIGNED_IN_MESSAGE } from '../session/session.constants.js';
 import type { SessionStore } from '../session/SessionStore.js';
@@ -10,6 +14,7 @@ import type { RecoveryKeyCheck } from '../user/user.types.js';
 import {
   EMAIL_NOT_VERIFIED_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
+  WRONG_CURRENT_PASSWORD_MESSAGE,
   SESSION_TOKEN_BYTES,
   SESSION_NEVER_EXPIRES_AT,
 } from './auth.constants.js';
@@ -40,9 +45,35 @@ export class AuthService {
    * pass the lockout check before any of them was counted, and get far more than five tries a round.
    */
   login(request: LoginRequest): Promise<LoginResult> {
-    const { email } = request;
+    return this.oneAtATime(request.email, () => this.attemptLogin(request));
+  }
+
+  /**
+   * A signed-in user sets a new password after proving the current one. Wrong guesses count
+   * toward the same per-account lockout as login (someone holding an unlocked phone must not get
+   * unlimited tries). The session stays: there is only one, and it is this device's.
+   */
+  async changePassword(userId: string, current: string, next: string): Promise<void> {
+    const user = await this.users.findAuthById(userId);
+    if (!user) throw new UnauthorizedError(NOT_SIGNED_IN_MESSAGE);
+    await this.oneAtATime(user.email, async () => {
+      const locked = this.throttle.lockout(user.email);
+      if (locked) throw new LoginLockedError(locked);
+      if (!(await this.hasher.verify(user.passwordHash, current))) {
+        const started = this.throttle.recordFailure(user.email);
+        if (started) throw new LoginLockedError(started);
+        throw new BadRequestError(WRONG_CURRENT_PASSWORD_MESSAGE);
+      }
+      await this.users.updatePassword(userId, await this.hasher.hash(next), this.now());
+      this.throttle.reset(user.email);
+    });
+    this.logger.info(`User ${userId} changed their password.`);
+  }
+
+  /** Runs password checks for one account in order (see `login`). */
+  private oneAtATime<T>(email: string, task: () => Promise<T>): Promise<T> {
     const previous = this.inFlight.get(email) ?? Promise.resolve();
-    const run = previous.then(() => this.attemptLogin(request));
+    const run = previous.then(task);
     const tail = run.then(
       () => undefined,
       () => undefined,
